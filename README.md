@@ -32,6 +32,7 @@ Entities (Aggregates) will follow best practices to enforce business rules (inva
 - static factory method to create a valid entity 
 - private setters to avoid rule breaking
 - Method to change state while enforcing rules
+- Edits on subaggregates are proxied through the parent aggregate to ensure that the parent can enforce its own invariants (e.g. you cannot modify order lines when the order is shipped). If you really need to edit the subaggregate directly, it likely means the aggregate boundaries are wrong and the subaggregate doesn't belong to the aggregate and should be modeled as its own aggregate (e.g. shipment).
 
 Invariant: a business rule that must be always true! You can ensure invariants by letting the aggregates state be changed only using their own methods and doing all the validation inside those methods.  
 
@@ -83,3 +84,6 @@ vs codes plugins:
 ClaudeCode:
 - Brainstorming
 - Writing tests / some of the code
+
+
+TODO: autoformat before commit
