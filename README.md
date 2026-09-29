@@ -25,35 +25,56 @@ This solution will follow clean architectures rules:
 - Tests
     - Different folder containing unit tests and integration tests
 
-## EF Core
+
+## Domain
+Entities (Aggregates) will follow best practices to enforce business rules (invariants):
+- private empty constructor to let EF rehydrate the entity (no validation on rehydration)
+- static factory method to create a valid entity 
+- private setters to avoid rule breaking
+- Method to change state while enforcing rules
+
+Invariant: a business rule that must be always true! You can ensure invariants by letting the aggregates state be changed only using their own methods and doing all the validation inside those methods.  
+
+## Application
+Services will coordinate use cases logic:
+- Note: Here you coordinate use cases! Business Rules live in Domain.
+    - retrieve tracked objects
+    - applying edits through domain's invariants
+    - committing uow
+- DTO, Commands, Responses live here because they are the contracts Api consumes and keeps the dependency direction Api -> Application -> Domain.
+
+## Api
+Api will do basic http tasks:
+- map endpoints
+- call services
+- handle http statuses
+
+## Infrastructure
+Here we have repositories used to persist and retrieve aggregates to modify.
+
+### EF Core
 
 - ORM used to map db tables to C# Entities.
 - We will use migrations with a forward-only pattern.
 - We will use IReadOnlyList and not IEnumerable to avoid a lazy query execution that would throw an ObjectDisposedException 
-- We will use classes implementing IEntityTypeConfiguration inside the repository to map EF against the entities withouth writing EF-related code inside Domain.
+- We will use Fluent API (classes implementing IEntityTypeConfiguration inside infrastructure) to map EF against the entities withouth writing EF-related code inside Domain.
 - a DBContext is not ThreadSafe and is designed to be used a single Unit Of Work (Scoped lifetime is the way, Also Repositories should be Scoped)
-- Repositories will be implemented as collections and UoW will be in DbContext  
+- Repositories will be implemented as collections and UoW will be in DbContext, because when a use case touches multiple repositories, the commit shouuld still be a single operation since no single repository "owns" SaveChanges  
 
 ```bash
 dotnet ef migrations add InitialCreate --project src/Infrastructure --startup-project src/Api
 dotnet ef database update --project src/Infrastructure --startup-project src/Api
 ```
 
-# Domain
-Entities will follow best practices to ensure rules:
-- private empty constructor to let EF rehydrate the entity (no validation on rehydration)
-- static factory method to create a valid entity 
-- private setters to avoid rule breaking
-- invariants to change state and enforce rules
-
-# Tests
+## Tests
 
 - One test class per tested class 
 - Follows Method_Condition_Result naming convention (e.g. Create_WithEmptyName_Throws)
 - Follows AAA (Arrange, Act, Assert) pattern to implements tests
 - Not using red green refactor
+- Used MOQ to mock dependencies
 
-# Tools and vscodes plugins
+## Tools and vscodes plugins
 
 vs codes plugins:
 - C# Dev Kit - Adds .net related right clicks options to the folder explorer

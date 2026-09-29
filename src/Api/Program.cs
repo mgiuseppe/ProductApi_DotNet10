@@ -1,3 +1,5 @@
+using Api.Endpoints;
+using Application;
 using Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,10 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<IProductService,ProductService>();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.MapProductEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

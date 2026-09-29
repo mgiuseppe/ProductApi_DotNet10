@@ -99,7 +99,7 @@ public class ProductRepositoryTests : IDisposable
             var loaded = await repository.GetByIdAsync(product.Id, CancellationToken.None);
             Assert.NotNull(loaded);
 
-            repository.Delete(loaded, CancellationToken.None);
+            repository.Delete(loaded);
             await db.SaveChangesAsync();
         }
 

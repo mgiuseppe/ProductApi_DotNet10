@@ -34,7 +34,7 @@ internal class ProductRepository : IProductRepository
         await _db.Products.AddAsync(product, ct);
     }
 
-    public void Delete(Product product, CancellationToken ct)
+    public void Delete(Product product)
     {
         _db.Products.Remove(product);
     }

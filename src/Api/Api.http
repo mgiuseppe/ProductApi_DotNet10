@@ -1,6 +1,73 @@
 @Api_HostAddress = http://localhost:5224
 
-GET {{Api_HostAddress}}/weatherforecast/
+### Crea un prodotto valido → 201
+POST {{Api_HostAddress}}/products
+Content-Type: application/json
+
+{
+  "name": "Tastiera",
+  "price": 49.90,
+  "description": "Meccanica"
+}
+
+### Crea con nome vuoto → 400
+POST {{Api_HostAddress}}/products
+Content-Type: application/json
+
+{
+  "name": "",
+  "price": 10,
+  "description": null
+}
+
+### Leggi per id (sostituisci l'id con quello ricevuto sopra) → 200
+GET {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
 Accept: application/json
 
-###
+### Leggi un id inesistente → 404
+GET {{Api_HostAddress}}/products/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Lista con default → 200, array (anche vuoto)
+GET {{Api_HostAddress}}/products?page=1&pageSize=20
+Accept: application/json
+
+### Lista con page/pageSize non validi → 400
+GET {{Api_HostAddress}}/products?page=0&pageSize=20
+Accept: application/json
+
+### Aggiorna un prodotto esistente → 200
+PUT {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+Content-Type: application/json
+
+{
+  "name": "Tastiera Pro",
+  "price": 59.90,
+  "description": "Meccanica RGB"
+}
+
+### Aggiorna con dati non validi → 400
+PUT {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+Content-Type: application/json
+
+{
+  "name": "",
+  "price": -5,
+  "description": null
+}
+
+### Aggiorna un id inesistente → 404
+PUT {{Api_HostAddress}}/products/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "name": "Fantasma",
+  "price": 1,
+  "description": null
+}
+
+### Cancella → 204
+DELETE {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+
+### Cancella di nuovo lo stesso id → 404
+DELETE {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
