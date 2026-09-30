@@ -16,7 +16,7 @@ public static class ProductEndpoints
             return p != null ? Results.Ok(ProductResponse.FromDomain(p)) : Results.NotFound();
         });
 
-        app.MapGet("/products/", async (int page, int pageSize, IProductService service, CancellationToken ct) =>
+        app.MapGet("/products", async (int page, int pageSize, IProductService service, CancellationToken ct) =>
         {
             if (page <= 0 || pageSize <= 0)
                 return Results.BadRequest($"Page and PageSize should be greater than zero - Page: {page} - PageSize: {pageSize} ");

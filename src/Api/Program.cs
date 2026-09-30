@@ -9,11 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IProductService,ProductService>();
+builder.Services.AddScoped<IOrderService,OrderService>();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.MapProductEndpoints();
+app.MapOrderEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

@@ -1,0 +1,119 @@
+@Api_HostAddress = http://localhost:5224
+
+### === PRODUCTS (setup, per avere ProductId reali da usare negli ordini) ===
+
+### Crea un prodotto → 201, copia l'id per gli step successivi
+POST {{Api_HostAddress}}/products
+Content-Type: application/json
+
+{
+  "name": "Tastiera",
+  "price": 49.90,
+  "description": "Meccanica"
+}
+
+### Crea un secondo prodotto → 201
+POST {{Api_HostAddress}}/products
+Content-Type: application/json
+
+{
+  "name": "Mouse",
+  "price": 25.00,
+  "description": "Wireless"
+}
+
+### === ORDERS ===
+
+### Crea un ordine con due righe → 201
+# Sostituisci PRODUCT_ID_1 e PRODUCT_ID_2 con gli id ottenuti sopra
+POST {{Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "lines": [
+    { "productId": "1cd3016f-4730-4a72-889e-8f345dd02401", "productName": "Tastiera", "unitPrice": 49.90, "quantity": 1 },
+    { "productId": "1cd3016f-4730-4a72-889e-8f345dd02402", "productName": "Mouse", "unitPrice": 25.00, "quantity": 2 }
+  ]
+}
+
+### Crea un ordine senza righe → 201 (Order.Create senza righe è ammesso, verifica sia il comportamento voluto)
+POST {{Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "lines": []
+}
+
+### Leggi per id (sostituisci con l'id del primo ordine creato) → 200, con Lines popolate
+GET {{Api_HostAddress}}/orders/835df79c-12f4-4a72-8ede-fa2a17055e91
+Accept: application/json
+
+### Leggi un id inesistente → 404
+GET {{Api_HostAddress}}/orders/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Lista con default → 200
+GET {{Api_HostAddress}}/orders?page=1&pageSize=20
+Accept: application/json
+
+### Lista con page/pageSize non validi → 400
+GET {{Api_HostAddress}}/orders?page=0&pageSize=20
+Accept: application/json
+
+### === UPDATE BATCH SULLE RIGHE ===
+
+### Aggiungi una riga, modifica una esistente, rimuovine una → 200
+# Sostituisci: ID ordine nell'URL, PRODUCT_ID_1 con un id valido,
+# LINE_ID_DA_MODIFICARE e LINE_ID_DA_RIMUOVERE con gli id delle righe già presenti nell'ordine (dal GET sopra)
+PUT {{Api_HostAddress}}/orders/835df79c-12f4-4a72-8ede-fa2a17055e91
+Content-Type: application/json
+
+{
+  "linesToAdd": [
+    { "productId": "PRODUCT_ID_1", "productName": "Tastiera", "unitPrice": 49.90, "quantity": 3 }
+  ],
+  "linesToUpdate": [
+    { "id": "LINE_ID_DA_MODIFICARE", "unitPrice": 45.00, "quantity": 2 }
+  ],
+  "lineIdsToDelete": [
+    "LINE_ID_DA_RIMUOVERE"
+  ]
+}
+
+### Update con quantità non valida (0) → 400
+PUT {{Api_HostAddress}}/orders/835df79c-12f4-4a72-8ede-fa2a17055e91
+Content-Type: application/json
+
+{
+  "linesToAdd": [],
+  "linesToUpdate": [
+    { "id": "LINE_ID_ESISTENTE", "unitPrice": 10, "quantity": 0 }
+  ],
+  "lineIdsToDelete": []
+}
+
+### Update su una riga con id inesistente → 400 (DomainException dal dominio, non 404: la riga non è una risorsa top-level)
+PUT {{Api_HostAddress}}/orders/METTI-QUI-L-ID
+Content-Type: application/json
+
+{
+  "linesToAdd": [],
+  "linesToUpdate": [
+    { "id": "00000000-0000-0000-0000-000000000000", "unitPrice": 10, "quantity": 1 }
+  ],
+  "lineIdsToDelete": []
+}
+
+### Update su un ordine inesistente → 404
+PUT {{Api_HostAddress}}/orders/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "linesToAdd": [],
+  "linesToUpdate": [],
+  "lineIdsToDelete": []
+}
+
+### === TRANSIZIONI DI STATO ===
+
+### Conferma un ordine con righe →
