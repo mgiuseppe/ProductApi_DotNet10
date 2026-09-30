@@ -19,6 +19,7 @@ internal class ProductRepository : IProductRepository
         return await _db.FindAsync<Product>([id], cancellationToken: ct);
     }
 
+    // TODO: this must be moved outside the repository because it's not meant to return the aggregate
     public async Task<IReadOnlyList<Product>> ListProductsAsync(int page, int pageSize, CancellationToken ct)
     {
         var query = _db.Products.AsNoTracking()

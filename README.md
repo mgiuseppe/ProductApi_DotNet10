@@ -62,10 +62,13 @@ Here we have repositories used to persist and retrieve aggregates to modify.
 - a DBContext is not ThreadSafe and is designed to be used a single Unit Of Work (Scoped lifetime is the way, Also Repositories should be Scoped)
 - Repositories will be implemented as collections and UoW will be in DbContext, because when a use case touches multiple repositories, the commit shouuld still be a single operation since no single repository "owns" SaveChanges  
 
+- Generate migration and apply
 ```bash
 dotnet ef migrations add InitialCreate --project src/Infrastructure --startup-project src/Api
 dotnet ef database update --project src/Infrastructure --startup-project src/Api
 ```
+- Note: InitialCreate is just the name of the migration, so you can add more migrations by specifying a different name
+- Generate next migrations
 
 ## Tests
 
