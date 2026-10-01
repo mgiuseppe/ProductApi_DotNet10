@@ -8,29 +8,52 @@ namespace Application.Tests;
 public class OrderServiceTests
 {
     private readonly Mock<IOrderRepository> _repository = new();
+    private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly OrderService _sut; // "system under test"
 
     public OrderServiceTests()
     {
-        _sut = new OrderService(_repository.Object, _unitOfWork.Object);
+        _sut = new OrderService(_repository.Object, _productRepository.Object, _unitOfWork.Object);
     }
 
     [Fact]
     public async Task CreateAsync_WithLines_AddsOrderAndSaves()
     {
+        var p1 = Product.Create("Product 1", 10m);
+        var p2 = Product.Create("Product 2", 5m);
+        SetupProducts(p1, p2);
         var cmd = new CreateOrderCommand([
-            new CreateOrderLine(Guid.NewGuid(), "Product 1", 10m, 2),
-            new CreateOrderLine(Guid.NewGuid(), "Product 2", 5m, 1)
+            new CreateOrderLine(p1.Id, 2),
+            new CreateOrderLine(p2.Id, 1)
         ]);
 
         var order = await _sut.CreateAsync(cmd, CancellationToken.None);
 
         Assert.Equal(OrderStatus.Draft, order.Status);
         Assert.Equal(2, order.Lines.Count);
+        Assert.Contains(order.Lines, l => l.ProductId == p1.Id && l.ProductNameSnapshot == "Product 1" && l.UnitPriceSnapshot == 10m);
+        Assert.Contains(order.Lines, l => l.ProductId == p2.Id && l.ProductNameSnapshot == "Product 2" && l.UnitPriceSnapshot == 5m);
         Assert.Equal(25m, order.Total);
         _repository.Verify(r => r.AddAsync(order, It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateAsync_WithNonExistentProduct_ThrowsNotFoundException()
+    {
+        var existing = Product.Create("Product 1", 10m);
+        SetupProducts(existing);
+        var cmd = new CreateOrderCommand([
+            new CreateOrderLine(existing.Id, 1),
+            new CreateOrderLine(Guid.NewGuid(), 1)
+        ]);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _sut.CreateAsync(cmd, CancellationToken.None));
+
+        _repository.Verify(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()), Times.Never);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -74,16 +97,21 @@ public class OrderServiceTests
     [Fact]
     public async Task UpdateAsync_WithExistingId_AppliesChangesAndSaves()
     {
+        var toUpdate = Product.Create("To update", 10m);
+        var toDelete = Product.Create("To delete", 20m);
+        var added = Product.Create("Added", 3m);
         var order = Order.Create()
-            .AddLine(Guid.NewGuid(), "To update", 10m, 1)
-            .AddLine(Guid.NewGuid(), "To delete", 20m, 1);
-        var lineToUpdate = order.Lines.First(l => l.ProductNameSnapshot == "To update");
-        var lineToDelete = order.Lines.First(l => l.ProductNameSnapshot == "To delete");
+            .AddLine(toUpdate.Id, toUpdate.Name, toUpdate.Price, 1)
+            .AddLine(toDelete.Id, toDelete.Name, toDelete.Price, 1);
+        var lineToUpdate = order.Lines.First(l => l.ProductId == toUpdate.Id);
+        var lineToDelete = order.Lines.First(l => l.ProductId == toDelete.Id);
+        toUpdate.ChangePrice(15m); // updated lines pick up the current product price
         SetupOrder(order);
+        SetupProducts(toUpdate, toDelete, added);
 
         var cmd = new UpdateOrderCommand(
-            [new CreateOrderLine(Guid.NewGuid(), "Added", 3m, 2)],
-            [new UpdateOrderLine(lineToUpdate.Id, 15m, 3)],
+            [new CreateOrderLine(added.Id, 2)],
+            [new UpdateOrderLine(lineToUpdate.Id, 3)],
             [lineToDelete.Id]);
 
         var result = await _sut.UpdateAsync(order.Id, cmd, CancellationToken.None);
@@ -95,6 +123,36 @@ public class OrderServiceTests
         Assert.Equal(3, lineToUpdate.Quantity);
         Assert.Equal(51m, result.Total);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithNonExistentLine_ThrowsNotFoundException()
+    {
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
+        SetupOrder(order);
+        SetupProducts(product);
+        var cmd = new UpdateOrderCommand([], [new UpdateOrderLine(Guid.NewGuid(), 2)], []);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _sut.UpdateAsync(order.Id, cmd, CancellationToken.None));
+
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WithNonExistentProductToAdd_ThrowsNotFoundException()
+    {
+        var order = Order.Create();
+        SetupProducts();
+        SetupOrder(order);
+        var cmd = new UpdateOrderCommand([new CreateOrderLine(Guid.NewGuid(), 1)], [], []);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _sut.UpdateAsync(order.Id, cmd, CancellationToken.None));
+
+        Assert.Empty(order.Lines);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -112,13 +170,46 @@ public class OrderServiceTests
     [Fact]
     public async Task ConfirmAsync_WithDraftOrder_ConfirmsAndSaves()
     {
-        var order = Order.Create().AddLine(Guid.NewGuid(), "Product", 10m, 1);
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
         SetupOrder(order);
+        SetupProducts(product);
 
         var result = await _sut.ConfirmAsync(order.Id, CancellationToken.None);
 
         Assert.Equal(OrderStatus.Confirmed, result.Status);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_WithStalePrices_ResyncsLinesBeforeConfirming()
+    {
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 2);
+        product.ChangePrice(12m);
+        SetupOrder(order);
+        SetupProducts(product);
+
+        var result = await _sut.ConfirmAsync(order.Id, CancellationToken.None);
+
+        Assert.Equal(OrderStatus.Confirmed, result.Status);
+        Assert.Equal(12m, result.Lines.Single().UnitPriceSnapshot);
+        Assert.Equal(24m, result.Total);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmAsync_WithNonExistentProduct_ThrowsNotFoundException()
+    {
+        var order = Order.Create().AddLine(Guid.NewGuid(), "Deleted product", 10m, 1);
+        SetupProducts();
+        SetupOrder(order);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _sut.ConfirmAsync(order.Id, CancellationToken.None));
+
+        Assert.Equal(OrderStatus.Draft, order.Status);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -177,6 +268,14 @@ public class OrderServiceTests
         _repository
             .Setup(r => r.GetByIdAsync(order.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(order);
+    }
+
+    private void SetupProducts(params Product[] products)
+    {
+        _productRepository
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IReadOnlyList<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<Guid> ids, CancellationToken _) =>
+                products.Where(p => ids.Contains(p.Id)).ToList());
     }
 
     private void SetupOrderNotFound(Guid id)

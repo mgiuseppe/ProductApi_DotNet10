@@ -1,8 +1,9 @@
 @Api_HostAddress = http://localhost:5224
 
-### === PRODUCTS (setup, per avere ProductId reali da usare negli ordini) ===
+### === PRODUCTS (setup) ===
 
-### Crea un prodotto → 201, copia l'id per gli step successivi
+### Crea un prodotto
+# @name createProduct1
 POST {{Api_HostAddress}}/products
 Content-Type: application/json
 
@@ -12,7 +13,8 @@ Content-Type: application/json
   "description": "Meccanica"
 }
 
-### Crea un secondo prodotto → 201
+### Crea un secondo prodotto
+# @name createProduct2
 POST {{Api_HostAddress}}/products
 Content-Type: application/json
 
@@ -22,21 +24,33 @@ Content-Type: application/json
   "description": "Wireless"
 }
 
+### Crea un terzo prodotto, usato per il test "aggiungi riga" nell'update
+# @name createProduct3
+POST {{Api_HostAddress}}/products
+Content-Type: application/json
+
+{
+  "name": "Monitor",
+  "price": 199.00,
+  "description": "27 pollici"
+}
+
 ### === ORDERS ===
 
 ### Crea un ordine con due righe → 201
-# Sostituisci PRODUCT_ID_1 e PRODUCT_ID_2 con gli id ottenuti sopra
+# @name createOrder
 POST {{Api_HostAddress}}/orders
 Content-Type: application/json
 
 {
   "lines": [
-    { "productId": "1cd3016f-4730-4a72-889e-8f345dd02401", "productName": "Tastiera", "unitPrice": 49.90, "quantity": 1 },
-    { "productId": "1cd3016f-4730-4a72-889e-8f345dd02402", "productName": "Mouse", "unitPrice": 25.00, "quantity": 2 }
+    { "productId": "{{createProduct1.response.body.$.id}}", "productName": "Tastiera", "unitPrice": 49.90, "quantity": 1 },
+    { "productId": "{{createProduct2.response.body.$.id}}", "productName": "Mouse", "unitPrice": 25.00, "quantity": 2 }
   ]
 }
 
-### Crea un ordine senza righe → 201 (Order.Create senza righe è ammesso, verifica sia il comportamento voluto)
+### Crea un ordine senza righe → 201 (Order.Create senza righe è ammesso)
+# @name createEmptyOrder
 POST {{Api_HostAddress}}/orders
 Content-Type: application/json
 
@@ -44,8 +58,9 @@ Content-Type: application/json
   "lines": []
 }
 
-### Leggi per id (sostituisci con l'id del primo ordine creato) → 200, con Lines popolate
-GET {{Api_HostAddress}}/orders/835df79c-12f4-4a72-8ede-fa2a17055e91
+### Leggi per id → 200, con Lines popolate
+# @name getOrder
+GET {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}
 Accept: application/json
 
 ### Leggi un id inesistente → 404
@@ -63,37 +78,36 @@ Accept: application/json
 ### === UPDATE BATCH SULLE RIGHE ===
 
 ### Aggiungi una riga, modifica una esistente, rimuovine una → 200
-# Sostituisci: ID ordine nell'URL, PRODUCT_ID_1 con un id valido,
-# LINE_ID_DA_MODIFICARE e LINE_ID_DA_RIMUOVERE con gli id delle righe già presenti nell'ordine (dal GET sopra)
-PUT {{Api_HostAddress}}/orders/835df79c-12f4-4a72-8ede-fa2a17055e91
+# Gli id delle righe esistenti li prendo dalla risposta di getOrder, indicizzando l'array lines
+PUT {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}
 Content-Type: application/json
 
 {
   "linesToAdd": [
-    { "productId": "PRODUCT_ID_1", "productName": "Tastiera", "unitPrice": 49.90, "quantity": 3 }
+    { "productId": "{{createProduct3.response.body.$.id}}", "productName": "Monitor", "unitPrice": 199.00, "quantity": 1 }
   ],
   "linesToUpdate": [
-    { "id": "LINE_ID_DA_MODIFICARE", "unitPrice": 45.00, "quantity": 2 }
+    { "id": "{{getOrder.response.body.$.lines[0].id}}", "unitPrice": 45.00, "quantity": 2 }
   ],
   "lineIdsToDelete": [
-    "LINE_ID_DA_RIMUOVERE"
+    "{{getOrder.response.body.$.lines[1].id}}"
   ]
 }
 
 ### Update con quantità non valida (0) → 400
-PUT {{Api_HostAddress}}/orders/835df79c-12f4-4a72-8ede-fa2a17055e91
+PUT {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}
 Content-Type: application/json
 
 {
   "linesToAdd": [],
   "linesToUpdate": [
-    { "id": "LINE_ID_ESISTENTE", "unitPrice": 10, "quantity": 0 }
+    { "id": "{{getOrder.response.body.$.lines[0].id}}", "unitPrice": 10, "quantity": 0 }
   ],
   "lineIdsToDelete": []
 }
 
-### Update su una riga con id inesistente → 400 (DomainException dal dominio, non 404: la riga non è una risorsa top-level)
-PUT {{Api_HostAddress}}/orders/METTI-QUI-L-ID
+### Update su una riga con id inesistente → 400 (DomainException, non 404)
+PUT {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}
 Content-Type: application/json
 
 {
@@ -116,4 +130,28 @@ Content-Type: application/json
 
 ### === TRANSIZIONI DI STATO ===
 
-### Conferma un ordine con righe →
+### Conferma l'ordine con righe → 200, Status: Confirmed
+POST {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}/confirm
+
+### Conferma l'ordine SENZA righe → 400
+POST {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}/confirm
+
+### Prova a spedire l'ordine vuoto, ancora Draft → 400, transizione vietata
+POST {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}/ship
+
+### Spedisci l'ordine confermato → 200, Status: Shipped
+POST {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}/ship
+
+### Prova ad annullare l'ordine già spedito → 400, transizione vietata
+POST {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}/cancel
+
+### Confirm/ship/cancel su un ordine inesistente → 404
+POST {{Api_HostAddress}}/orders/00000000-0000-0000-0000-000000000000/confirm
+
+### === DELETE ===
+
+### Cancella l'ordine vuoto → 204
+DELETE {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}
+
+### Cancella di nuovo lo stesso id → 404
+DELETE {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}

@@ -19,6 +19,11 @@ internal class ProductRepository : IProductRepository
         return await _db.FindAsync<Product>([id], cancellationToken: ct);
     }
 
+    public async Task<IReadOnlyList<Product>> GetByIdsAsync(IReadOnlyList<Guid> ids, CancellationToken ct)
+    {
+        return await _db.Products.Where(p => ids.Contains(p.Id)).ToListAsync(ct);
+    }
+
     // TODO: this must be moved outside the repository because it's not meant to return the aggregate
     public async Task<IReadOnlyList<Product>> ListProductsAsync(int page, int pageSize, CancellationToken ct)
     {

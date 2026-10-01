@@ -90,3 +90,8 @@ ClaudeCode:
 
 
 TODO: autoformat before commit
+
+## Domain Simplifications
+
+- Order in status Draft acts as an implicit cart: lines can be freely added/updated/removed and prices will be kept in sync with the product catalog. A real e-commerce would likely model Cart as a separate aggregate from Order (immutable once created via checkout). Simplified here to keep the project simple.
+- Order.ConfirmAsync re-reads current product prices and silently updates any stale line before confirming, rather than rejecting the confirmation. In a real  e-commerce, the user would typically see a "price has changed" confirmation step before checkout rather than a silent update. Simplified here.

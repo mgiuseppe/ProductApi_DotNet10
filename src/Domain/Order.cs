@@ -11,6 +11,9 @@ public enum OrderStatus
 }
 
 /// <summary>
+/// Order in status Draft acts as an implicit cart, see README § Order/Cart boundary for the reasoning, 
+/// This is a deliberate simplification, a real e-commerce would use a separate cart aggregate.
+/// 
 /// Invariants:
 /// - No rows with qty < 0
 /// - No shipping without rows

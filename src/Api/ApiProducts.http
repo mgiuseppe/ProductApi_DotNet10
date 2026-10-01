@@ -1,6 +1,7 @@
 @Api_HostAddress = http://localhost:5224
 
 ### Crea un prodotto valido → 201
+# @name createProduct
 POST {{Api_HostAddress}}/products
 Content-Type: application/json
 
@@ -20,8 +21,8 @@ Content-Type: application/json
   "description": null
 }
 
-### Leggi per id (sostituisci l'id con quello ricevuto sopra) → 200
-GET {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+### Leggi per id → 200
+GET {{Api_HostAddress}}/products/{{createProduct.response.body.$.id}}
 Accept: application/json
 
 ### Leggi un id inesistente → 404
@@ -37,7 +38,7 @@ GET {{Api_HostAddress}}/products?page=0&pageSize=20
 Accept: application/json
 
 ### Aggiorna un prodotto esistente → 200
-PUT {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+PUT {{Api_HostAddress}}/products/{{createProduct.response.body.$.id}}
 Content-Type: application/json
 
 {
@@ -47,7 +48,7 @@ Content-Type: application/json
 }
 
 ### Aggiorna con dati non validi → 400
-PUT {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+PUT {{Api_HostAddress}}/products/{{createProduct.response.body.$.id}}
 Content-Type: application/json
 
 {
@@ -67,7 +68,7 @@ Content-Type: application/json
 }
 
 ### Cancella → 204
-DELETE {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+DELETE {{Api_HostAddress}}/products/{{createProduct.response.body.$.id}}
 
 ### Cancella di nuovo lo stesso id → 404
-DELETE {{Api_HostAddress}}/products/afebaef8-fc9e-43a7-a85c-225f8bde4ce3
+DELETE {{Api_HostAddress}}/products/{{createProduct.response.body.$.id}}
