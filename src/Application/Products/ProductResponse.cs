@@ -1,6 +1,6 @@
 using Domain;
 
-namespace Application.Responses;
+namespace Application.Products;
 
 public record ProductResponse(Guid Id, string Name, decimal Price, string? Description)
 {

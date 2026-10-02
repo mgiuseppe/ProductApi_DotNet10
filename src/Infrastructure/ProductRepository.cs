@@ -24,17 +24,6 @@ internal class ProductRepository : IProductRepository
         return await _db.Products.Where(p => ids.Contains(p.Id)).ToListAsync(ct);
     }
 
-    // TODO: this must be moved outside the repository because it's not meant to return the aggregate
-    public async Task<IReadOnlyList<Product>> ListProductsAsync(int page, int pageSize, CancellationToken ct)
-    {
-        var query = _db.Products.AsNoTracking()
-                                .OrderBy((p) => p.Name)
-                                .Skip((page-1) * pageSize)
-                                .Take(pageSize);
-
-        return await query.ToListAsync(ct);
-    }
-
     public async Task AddAsync(Product product, CancellationToken ct)
     {
         await _db.Products.AddAsync(product, ct);

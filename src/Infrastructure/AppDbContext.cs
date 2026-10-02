@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure;
 
-internal class AppDbContext : DbContext, IUnitOfWork
+internal class AppDbContext : DbContext, IUnitOfWork, IQueryContext
 {
     public DbSet<Product> Products { get; set; }
     public DbSet<Order> Orders { get; set; }

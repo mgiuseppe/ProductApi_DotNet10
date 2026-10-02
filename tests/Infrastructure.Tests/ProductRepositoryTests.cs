@@ -113,38 +113,6 @@ public class ProductRepositoryTests : IDisposable
 
     // Integration Test
     [Fact]
-    public async Task ListProductsAsync_ReturnsProductsOrderedByName_WithPaging()
-    {
-        var productB = Product.Create("Banana", 1.50m);
-        var productC = Product.Create("Chair", 89.99m);
-        var productA = Product.Create("Apple", 0.99m);
-
-        await using (var db = NewContext())
-        {
-            var repository = new ProductRepository(db);
-            await repository.AddAsync(productB, CancellationToken.None);
-            await repository.AddAsync(productC, CancellationToken.None);
-            await repository.AddAsync(productA, CancellationToken.None);
-            await db.SaveChangesAsync();
-        }
-
-        await using (var db = NewContext())
-        {
-            var repository = new ProductRepository(db);
-
-            var firstPage = await repository.ListProductsAsync(page: 1, pageSize: 2, CancellationToken.None);
-            Assert.Equal(2, firstPage.Count);
-            Assert.Equal("Apple", firstPage[0].Name);
-            Assert.Equal("Banana", firstPage[1].Name);
-
-            var secondPage = await repository.ListProductsAsync(page: 2, pageSize: 2, CancellationToken.None);
-            Assert.Single(secondPage);
-            Assert.Equal("Chair", secondPage[0].Name);
-        }
-    }
-
-    // Integration Test
-    [Fact]
     public async Task GetByIdAsync_WithNonExistingId_ReturnsNull()
     {
         await using var db = NewContext();

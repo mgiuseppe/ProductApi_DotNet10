@@ -1,8 +1,8 @@
-using Application;
-using Application.Commands;
+using Api.Requests;
 using Application.Exceptions;
-using Application.Responses;
+using Application.Products;
 using Domain.Exceptions;
+using MediatR;
 
 namespace Api.Endpoints;
 
@@ -10,27 +10,26 @@ public static class ProductEndpoints
 {
     public static WebApplication MapProductEndpoints(this WebApplication app)
     {
-        app.MapGet("/products/{id:guid}", async (Guid id, IProductService service, CancellationToken ct) =>
+        app.MapGet("/products/{id:guid}", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
-            var p = await service.GetByIdAsync(id, ct);
-            return p != null ? Results.Ok(ProductResponse.FromDomain(p)) : Results.NotFound();
+            var p = await mediator.Send(new GetProductByIdQuery(id), ct);
+            return p != null ? Results.Ok(p) : Results.NotFound();
         });
 
-        app.MapGet("/products", async (int page, int pageSize, IProductService service, CancellationToken ct) =>
+        app.MapGet("/products", async (int page, int pageSize, IMediator mediator, CancellationToken ct) =>
         {
             if (page <= 0 || pageSize <= 0)
                 return Results.BadRequest($"Page and PageSize should be greater than zero - Page: {page} - PageSize: {pageSize} ");
 
-            var ps = await service.GetListAsync(page, pageSize, ct);
-            return Results.Ok(ps.Select(p => ProductResponse.FromDomain(p)));
+            return Results.Ok(await mediator.Send(new GetProductsListQuery(page, pageSize), ct));
         });
 
-        app.MapPost("/products", async (CreateProductCommand cmd, IProductService service, CancellationToken ct) =>
+        app.MapPost("/products", async (CreateProductCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
             try
             {
-                var p = await service.CreateAsync(cmd, ct);
-                return Results.Created($"/products/{p.Id}", ProductResponse.FromDomain(p));
+                var response = await mediator.Send(cmd, ct);
+                return Results.Created($"/products/{response.Id}", response);
             }
             catch (DomainException e)
             {
@@ -38,12 +37,13 @@ public static class ProductEndpoints
             }
         });
 
-        app.MapPut("/products/{id:guid}", async (Guid id, UpdateProductCommand cmd, IProductService service, CancellationToken ct) =>
+        app.MapPut("/products/{id:guid}", async (Guid id, UpdateProductRequest req, IMediator mediator, CancellationToken ct) =>
         {
             try
             {
-                var p = await service.UpdateAsync(id, cmd, ct);
-                return Results.Ok(ProductResponse.FromDomain(p));
+                var cmd = new UpdateProductCommand(id, req.Name, req.Price, req.Description);
+                var response = await mediator.Send(cmd, ct);
+                return Results.Ok(response);
             }
             catch (NotFoundException e)
             {
@@ -56,11 +56,12 @@ public static class ProductEndpoints
             }
         });
 
-        app.MapDelete("/products/{id:guid}", async (Guid id, IProductService service, CancellationToken ct) =>
+        app.MapDelete("/products/{id:guid}", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
             try
             {
-                await service.DeleteAsync(id, ct);
+                var cmd = new DeleteProductCommand(id);
+                await mediator.Send(cmd, ct);
                 return Results.NoContent();
             }
             catch (NotFoundException e)

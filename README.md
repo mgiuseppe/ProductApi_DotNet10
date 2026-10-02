@@ -78,6 +78,12 @@ dotnet ef database update --project src/Infrastructure --startup-project src/Api
 - Not using red green refactor
 - Used MOQ to mock dependencies
 
+### Testing strategy
+- Domain.Tests: pure unit tests, no dependencies.
+- Application.Tests: command handlers, with repositories/UnitOfWork mocked.
+- Infrastructure.Tests: repository integration tests (SQLite) AND query handler tests 
+ - even though query handlers live in Application, their tests depend on the real AppDbContext (internal to Infrastructure) and verify actual SQL translation, so they're grouped by dependency rather than by source location.
+
 ## Tools and vscodes plugins
 
 vs codes plugins:
