@@ -222,36 +222,6 @@ public class OrderRepositoryTests : IDisposable
 
     // Integration Test
     [Fact]
-    public async Task ListOrdersAsync_ReturnsAllOrders_WithPaging()
-    {
-        var orders = new[] { Order.Create(), Order.Create(), Order.Create() };
-
-        await using (var db = NewContext())
-        {
-            var repository = new OrderRepository(db);
-            foreach (var order in orders)
-                await repository.AddAsync(order, CancellationToken.None);
-            await db.SaveChangesAsync();
-        }
-
-        await using (var db = NewContext())
-        {
-            var repository = new OrderRepository(db);
-
-            var firstPage = await repository.ListOrdersAsync(page: 1, pageSize: 2, CancellationToken.None);
-            Assert.Equal(2, firstPage.Count);
-
-            var secondPage = await repository.ListOrdersAsync(page: 2, pageSize: 2, CancellationToken.None);
-            Assert.Single(secondPage);
-
-            // Ids are random, so we only check that pages don't overlap and together cover every order
-            var listedIds = firstPage.Concat(secondPage).Select(o => o.Id).ToList();
-            Assert.Equal(orders.Select(o => o.Id).Order(), listedIds.Order());
-        }
-    }
-
-    // Integration Test
-    [Fact]
     public async Task GetByIdAsync_WithNonExistingId_ReturnsNull()
     {
         await using var db = NewContext();

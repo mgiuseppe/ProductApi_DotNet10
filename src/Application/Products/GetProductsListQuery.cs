@@ -14,7 +14,9 @@ public class GetProductsListQueryHandler(IQueryContext db) : IRequestHandler<Get
             .OrderBy(p => p.Name)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(p => ProductResponse.FromDomain(p))
+            .Select(p => ProductResponse.FromDomain(p)) // FromDomain runs in memory after the query is executed without projection, 
+                                                        // if you have many fields, don't use a c# function in select but map the fields
+                                                        // directly to a DTO so taht EF can do the project that database side
             .ToListAsync(cancellationToken);
     }
 }

@@ -19,18 +19,6 @@ internal class OrderRepository : IOrderRepository
                                .FirstOrDefaultAsync(o => o.Id == id, cancellationToken: ct);
     }
 
-    // TODO: this must be moved outside the repository because it's not meant to return the aggregate
-    public async Task<IReadOnlyList<Order>> ListOrdersAsync(int page, int pageSize, CancellationToken ct)
-    {
-        var query = _db.Orders.AsNoTracking()
-                               .OrderBy(o => o.Id)
-                               .Skip((page-1)*pageSize)
-                               .Take(pageSize);
-                               // .Include(o => o.Lines);
-        
-        return await query.ToListAsync(ct);
-    }
-
     public async Task AddAsync(Order order, CancellationToken ct)
     {
         await _db.Orders.AddAsync(order, ct);
