@@ -166,7 +166,7 @@ public class OrderTests
     public void Confirm_WithoutLines_Throws()
     {
         var o = Order.Create();
-        Assert.Throws<DomainException>(o.Confirm);
+        Assert.Throws<DomainException>(() => o.Confirm());
         Assert.Equal(OrderStatus.Draft, o.Status);
     }
 

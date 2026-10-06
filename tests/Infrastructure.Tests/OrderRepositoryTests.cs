@@ -1,3 +1,4 @@
+using Application.Exceptions;
 using Domain;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,48 @@ public class OrderRepositoryTests : IDisposable
 
             Assert.NotNull(found);
             Assert.Equal(OrderStatus.Confirmed, found.Status);
+        }
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task Update_ConfirmWithVoucher_PersistsVoucherIdAndDiscount()
+    {
+        var now = DateTime.UtcNow;
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 9.90m);
+        var order = Order.Create().AddLine(Guid.NewGuid(), "Keyboard", 49.90m, 1);
+
+        await using (var db = NewContext())
+        {
+            await new VoucherRepository(db).AddAsync(voucher, CancellationToken.None);
+            await new OrderRepository(db).AddAsync(order, CancellationToken.None);
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext()) // new context to load, confirm with voucher and save
+        {
+            var loadedOrder = await new OrderRepository(db).GetByIdAsync(order.Id, CancellationToken.None);
+            var loadedVoucher = await new VoucherRepository(db).GetByIdAsync(voucher.Id, CancellationToken.None);
+
+            Assert.NotNull(loadedOrder);
+            Assert.NotNull(loadedVoucher);
+            new VoucherRedemptionService().ConfirmWithVoucher(loadedOrder, loadedVoucher, now);
+
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext()) // yet another context to verify both aggregates
+        {
+            var found = await new OrderRepository(db).GetByIdAsync(order.Id, CancellationToken.None);
+            var foundVoucher = await new VoucherRepository(db).GetByIdAsync(voucher.Id, CancellationToken.None);
+
+            Assert.NotNull(found);
+            Assert.Equal(OrderStatus.Confirmed, found.Status);
+            Assert.Equal(voucher.Id, found.VoucherId);
+            Assert.Equal(9.90m, found.DiscountAmount);
+            Assert.Equal(40m, found.Total);
+            Assert.NotNull(foundVoucher);
+            Assert.Equal(now, foundVoucher.RedeemedOn);
         }
     }
 
@@ -229,5 +272,37 @@ public class OrderRepositoryTests : IDisposable
         var found = await new OrderRepository(db).GetByIdAsync(Guid.NewGuid(), CancellationToken.None);
 
         Assert.Null(found);
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task Save_SameVoucherConfirmedConcurrentlyOnTwoOrders_SecondThrowsConflictException()
+    {
+        var now = DateTime.UtcNow;
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+        var orderA = Order.Create().AddLine(Guid.NewGuid(), "Keyboard", 49.90m, 1);
+        var orderB = Order.Create().AddLine(Guid.NewGuid(), "Mouse", 19.99m, 1);
+        await using (var db = NewContext())
+        {
+            await new VoucherRepository(db).AddAsync(voucher, CancellationToken.None);
+            await new OrderRepository(db).AddAsync(orderA, CancellationToken.None);
+            await new OrderRepository(db).AddAsync(orderB, CancellationToken.None);
+            await db.SaveChangesAsync();
+        }
+
+        // Both requests load the voucher before either saves, so the in-memory "already redeemed" check passes twice
+        await using var dbA = NewContext();
+        await using var dbB = NewContext();
+        var redemption = new VoucherRedemptionService();
+        redemption.ConfirmWithVoucher((await new OrderRepository(dbA).GetByIdAsync(orderA.Id, CancellationToken.None))!,
+                                      (await new VoucherRepository(dbA).GetByIdAsync(voucher.Id, CancellationToken.None))!,
+                                      now);
+        redemption.ConfirmWithVoucher((await new OrderRepository(dbB).GetByIdAsync(orderB.Id, CancellationToken.None))!,
+                                      (await new VoucherRepository(dbB).GetByIdAsync(voucher.Id, CancellationToken.None))!,
+                                      now);
+
+        await dbA.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ConflictException>(() => dbB.SaveChangesAsync());
     }
 }

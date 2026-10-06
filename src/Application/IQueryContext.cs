@@ -11,4 +11,5 @@ public interface IQueryContext
 {
     DbSet<Product> Products {get;}
     DbSet<Order> Orders {get;}
+    DbSet<Voucher> Vouchers { get; }
 }

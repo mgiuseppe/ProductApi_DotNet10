@@ -20,22 +20,33 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Order", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("VoucherId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Orders");
+                    b.HasIndex("VoucherId")
+                        .IsUnique();
+
+                    b.ToTable("Orders", t =>
+                        {
+                            t.HasCheckConstraint("CK_Orders_DiscountAmount_NonNegative", "DiscountAmount >= 0");
+                        });
                 });
 
             modelBuilder.Entity("Domain.OrderLine", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("OrderId")
@@ -71,7 +82,6 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
@@ -93,6 +103,43 @@ namespace Infrastructure.Migrations
                         {
                             t.HasCheckConstraint("CK_Products_Price_NonNegative", "Price >= 0");
                         });
+                });
+
+            modelBuilder.Entity("Domain.Voucher", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("CanceledOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("RedeemedOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ValidityEndDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ValidityStartDate")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Vouchers", t =>
+                        {
+                            t.HasCheckConstraint("CK_Vouchers_Amount_Positive", "Amount > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Domain.Order", b =>
+                {
+                    b.HasOne("Domain.Voucher", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Order", "VoucherId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Domain.OrderLine", b =>

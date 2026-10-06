@@ -11,6 +11,13 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.HasKey(o => o.Id);
         builder.Property(o => o.Id).ValueGeneratedNever(); // Useful because I generate the Guid in the app and not on DB, Otherwise EF could try to update an non-existant item on the db, this happens with sub-aggregates like OrderLine
         builder.Property(o => o.Status).HasConversion<string>(); // enum as string is more readable in DB 
+        builder.Property(o => o.VoucherId).IsRequired(false); // Nullable because order may not have a voucher applied
+        builder.HasOne<Voucher>()
+                .WithOne()
+                .HasForeignKey<Order>(o => o.VoucherId)
+                .OnDelete(DeleteBehavior.Restrict);
+        builder.Property(o => o.DiscountAmount).HasPrecision(18, 2);
+        
         builder.HasMany(o => o.Lines)
                 .WithOne()
                 .HasForeignKey("OrderId") // Shadow property that will exist only on DB
@@ -21,7 +28,10 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Metadata.FindNavigation(nameof(Order.Lines))!
                         .SetPropertyAccessMode(PropertyAccessMode.Field); // EF will use the backing field _lines and not the property
 
+        builder.Ignore(o => o.SubTotal); 
         builder.Ignore(o => o.Total); 
+
+        builder.ToTable(t => t.HasCheckConstraint("CK_Orders_DiscountAmount_NonNegative", "DiscountAmount >= 0"));
     }
 }
 

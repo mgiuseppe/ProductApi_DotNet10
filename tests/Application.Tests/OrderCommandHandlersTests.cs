@@ -1,6 +1,7 @@
 using Application.Exceptions;
 using Application.Orders;
 using Domain;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 
 namespace Application.Tests;
@@ -10,6 +11,8 @@ public class OrderCommandHandlersTests
     private readonly Mock<IOrderRepository> _repository = new();
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IVoucherRepository> _voucherRepository = new();
+    private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
 
     [Fact]
     public async Task CreateOrder_WithLines_AddsOrderAndSaves()
@@ -168,10 +171,10 @@ public class OrderCommandHandlersTests
     {
         var id = Guid.NewGuid();
         SetupOrderNotFound(id);
-        var sut = new ConfirmOrderCommandHandler(_repository.Object, _unitOfWork.Object, NewProductLookup());
+        var sut = NewConfirmOrderHandler();
 
         await Assert.ThrowsAsync<NotFoundException>(
-            () => sut.Handle(new ConfirmOrderCommand(id), CancellationToken.None));
+            () => sut.Handle(new ConfirmOrderCommand(id, null), CancellationToken.None));
 
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -183,9 +186,9 @@ public class OrderCommandHandlersTests
         var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
         SetupOrder(order);
         SetupProducts(product);
-        var sut = new ConfirmOrderCommandHandler(_repository.Object, _unitOfWork.Object, NewProductLookup());
+        var sut = NewConfirmOrderHandler();
 
-        var result = await sut.Handle(new ConfirmOrderCommand(order.Id), CancellationToken.None);
+        var result = await sut.Handle(new ConfirmOrderCommand(order.Id, null), CancellationToken.None);
 
         Assert.Equal(OrderStatus.Confirmed, result.Status);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
@@ -199,9 +202,9 @@ public class OrderCommandHandlersTests
         product.ChangePrice(12m);
         SetupOrder(order);
         SetupProducts(product);
-        var sut = new ConfirmOrderCommandHandler(_repository.Object, _unitOfWork.Object, NewProductLookup());
+        var sut = NewConfirmOrderHandler();
 
-        var result = await sut.Handle(new ConfirmOrderCommand(order.Id), CancellationToken.None);
+        var result = await sut.Handle(new ConfirmOrderCommand(order.Id, null), CancellationToken.None);
 
         Assert.Equal(OrderStatus.Confirmed, result.Status);
         Assert.Equal(12m, result.Lines.Single().UnitPriceSnapshot);
@@ -215,12 +218,76 @@ public class OrderCommandHandlersTests
         var order = Order.Create().AddLine(Guid.NewGuid(), "Deleted product", 10m, 1);
         SetupProducts();
         SetupOrder(order);
-        var sut = new ConfirmOrderCommandHandler(_repository.Object, _unitOfWork.Object, NewProductLookup());
+        var sut = NewConfirmOrderHandler();
 
         await Assert.ThrowsAsync<NotFoundException>(
-            () => sut.Handle(new ConfirmOrderCommand(order.Id), CancellationToken.None));
+            () => sut.Handle(new ConfirmOrderCommand(order.Id, null), CancellationToken.None));
 
         Assert.Equal(OrderStatus.Draft, order.Status);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_WithNonExistentVoucher_ThrowsNotFoundException()
+    {
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
+        var voucherId = Guid.NewGuid();
+        SetupOrder(order);
+        SetupProducts(product);
+        _voucherRepository
+            .Setup(r => r.GetByIdAsync(voucherId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Voucher?)null);
+        var sut = NewConfirmOrderHandler();
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => sut.Handle(new ConfirmOrderCommand(order.Id, voucherId), CancellationToken.None));
+
+        Assert.Equal(OrderStatus.Draft, order.Status);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_WithVoucher_AppliesDiscountRedeemsAtCurrentTimeAndSaves()
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 2);
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+        SetupOrder(order);
+        SetupProducts(product);
+        _voucherRepository
+            .Setup(r => r.GetByIdAsync(voucher.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(voucher);
+        var sut = NewConfirmOrderHandler();
+
+        var result = await sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None);
+
+        Assert.Equal(OrderStatus.Confirmed, result.Status);
+        Assert.Equal(15m, result.Total);
+        Assert.Equal(voucher.Id, order.VoucherId);
+        Assert.Equal(now, voucher.RedeemedOn);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_WithVoucher_UsesResyncedPricesForDiscountCheck()
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
+        product.ChangePrice(4m);
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+        SetupOrder(order);
+        SetupProducts(product);
+        _voucherRepository
+            .Setup(r => r.GetByIdAsync(voucher.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(voucher);
+        var sut = NewConfirmOrderHandler();
+
+        await Assert.ThrowsAsync<Domain.Exceptions.DomainException>(
+            () => sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None));
+
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -280,6 +347,9 @@ public class OrderCommandHandlersTests
 
     #region private helpers
     private ProductLookup NewProductLookup() => new(_productRepository.Object);
+
+    private ConfirmOrderCommandHandler NewConfirmOrderHandler() =>
+        new(_repository.Object, _voucherRepository.Object, new VoucherRedemptionService(), _unitOfWork.Object, NewProductLookup(), _timeProvider);
 
     private void SetupOrder(Order order)
     {

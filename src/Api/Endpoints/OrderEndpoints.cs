@@ -58,11 +58,11 @@ public static class OrderEndpoints
             }
         });
 
-        app.MapPost("/orders/{id:guid}/confirm", async (Guid id, IMediator mediator, CancellationToken ct) =>
+        app.MapPost("/orders/{id:guid}/confirm", async (Guid id, Guid? voucherId, IMediator mediator, CancellationToken ct) =>
         {
             try
             {
-                var o = await mediator.Send(new ConfirmOrderCommand(id), ct);
+                var o = await mediator.Send(new ConfirmOrderCommand(id, voucherId), ct);
                 return Results.Ok(o);
             }
             catch (NotFoundException e)
@@ -73,6 +73,10 @@ public static class OrderEndpoints
             catch (DomainException e)
             {
                 return Results.BadRequest(e.Message);
+            }
+            catch (ConflictException e)
+            {
+                return Results.Conflict(e.Message);
             }
         });
         app.MapPost("/orders/{id:guid}/ship", async (Guid id, IMediator mediator, CancellationToken ct) =>

@@ -1,0 +1,130 @@
+@Api_HostAddress = http://localhost:5224
+
+### === VOUCHERS ===
+
+### Crea un voucher → 201
+# @name createVoucher
+POST {{Api_HostAddress}}/vouchers
+Content-Type: application/json
+
+{
+  "validityStartDate": "2026-10-01T00:00:00Z",
+  "validityEndDate": "2026-12-31T23:59:59Z",
+  "amount": 10.00
+}
+
+### Leggi il voucher appena creato → 200
+GET {{Api_HostAddress}}/vouchers/{{createVoucher.response.body.$.id}}
+
+### Leggi un voucher inesistente → 404
+GET {{Api_HostAddress}}/vouchers/00000000-0000-0000-0000-000000000001
+
+### Crea un voucher con date invertite → 400
+POST {{Api_HostAddress}}/vouchers
+Content-Type: application/json
+
+{
+  "validityStartDate": "2026-12-31T00:00:00Z",
+  "validityEndDate": "2026-10-01T00:00:00Z",
+  "amount": 10.00
+}
+
+### Crea un voucher con importo non positivo → 400
+POST {{Api_HostAddress}}/vouchers
+Content-Type: application/json
+
+{
+  "validityStartDate": "2026-10-01T00:00:00Z",
+  "validityEndDate": "2026-12-31T23:59:59Z",
+  "amount": 0
+}
+
+### Annulla il voucher → 200, CanceledOn valorizzato
+POST {{Api_HostAddress}}/vouchers/{{createVoucher.response.body.$.id}}/cancel
+
+### Annulla di nuovo lo stesso voucher → 400
+POST {{Api_HostAddress}}/vouchers/{{createVoucher.response.body.$.id}}/cancel
+
+### Annulla un voucher inesistente → 404
+POST {{Api_HostAddress}}/vouchers/00000000-0000-0000-0000-000000000001/cancel
+
+### === CONFERMA ORDINE CON VOUCHER (setup) ===
+
+### Crea un prodotto
+# @name voucherProduct
+POST {{Api_HostAddress}}/products
+Content-Type: application/json
+
+{
+  "name": "Cuffie",
+  "price": 40.00,
+  "description": "Bluetooth"
+}
+
+### Crea un ordine (subtotale 40.00)
+# @name voucherOrder
+POST {{Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "lines": [
+    { "productId": "{{voucherProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### Crea un secondo ordine, per provare il riuso del voucher
+# @name voucherOrder2
+POST {{Api_HostAddress}}/orders
+Content-Type: application/json
+
+{
+  "lines": [
+    { "productId": "{{voucherProduct.response.body.$.id}}", "quantity": 1 }
+  ]
+}
+
+### Crea un voucher da 15.00
+# @name redeemableVoucher
+POST {{Api_HostAddress}}/vouchers
+Content-Type: application/json
+
+{
+  "validityStartDate": "2026-10-01T00:00:00Z",
+  "validityEndDate": "2026-12-31T23:59:59Z",
+  "amount": 15.00
+}
+
+### Crea un voucher da 100.00, più alto del subtotale
+# @name bigVoucher
+POST {{Api_HostAddress}}/vouchers
+Content-Type: application/json
+
+{
+  "validityStartDate": "2026-10-01T00:00:00Z",
+  "validityEndDate": "2026-12-31T23:59:59Z",
+  "amount": 100.00
+}
+
+### === CONFERMA ORDINE CON VOUCHER ===
+
+### Conferma con un voucher inesistente → 404
+POST {{Api_HostAddress}}/orders/{{voucherOrder.response.body.$.id}}/confirm?voucherId=00000000-0000-0000-0000-000000000001
+
+### Conferma con il voucher annullato sopra → 400
+POST {{Api_HostAddress}}/orders/{{voucherOrder.response.body.$.id}}/confirm?voucherId={{createVoucher.response.body.$.id}}
+
+### Conferma con un voucher più alto del subtotale → 400
+POST {{Api_HostAddress}}/orders/{{voucherOrder.response.body.$.id}}/confirm?voucherId={{bigVoucher.response.body.$.id}}
+
+### Conferma con il voucher da 15.00 → 200, Status: Confirmed, Total: 25.00
+POST {{Api_HostAddress}}/orders/{{voucherOrder.response.body.$.id}}/confirm?voucherId={{redeemableVoucher.response.body.$.id}}
+
+### Il voucher risulta riscattato → 200, RedeemedOn valorizzato
+GET {{Api_HostAddress}}/vouchers/{{redeemableVoucher.response.body.$.id}}
+
+### Riusa lo stesso voucher su un altro ordine → 400, già riscattato
+### (il 409 scatta solo con due conferme concorrenti, non riproducibile da qui)
+POST {{Api_HostAddress}}/orders/{{voucherOrder2.response.body.$.id}}/confirm?voucherId={{redeemableVoucher.response.body.$.id}}
+
+### Annulla un voucher già riscattato → 400
+POST {{Api_HostAddress}}/vouchers/{{redeemableVoucher.response.body.$.id}}/cancel

@@ -27,8 +27,13 @@ public class Order
     public Guid Id { get; private set; }
     public OrderStatus Status { get; private set; }
     public IReadOnlyCollection<OrderLine> Lines => _lines.AsReadOnly();
-    public decimal Total => _lines.Sum(l => l.TotalPriceSnapshot);
 
+    public Guid? VoucherId { get; private set; }
+    public decimal DiscountAmount { get; private set; }
+
+    public decimal SubTotal => _lines.Sum(l => l.TotalPriceSnapshot);
+    public decimal Total => SubTotal - DiscountAmount;
+    
     private Order()
     {
     }
@@ -69,14 +74,24 @@ public class Order
 
         return this;
     }
-    public void Confirm()
+
+    public void Confirm(ValidatedVoucher? voucher = null)
     {
         ValidateChangeStatus(OrderStatus.Confirmed);
         if (!_lines.Any())
             throw new DomainException("Cannot confirm order without lines");
+        
+        if (voucher is not null)
+        {
+            if (voucher.VoucherId  == Guid.Empty) throw new DomainException("Voucher Id cannot be empty");
+            if (voucher.Amount > SubTotal) throw new DomainException("Voucher amount exceeds the order subtotal");
+            VoucherId = voucher.VoucherId;
+            DiscountAmount = voucher.Amount;
+        }
 
         Status = OrderStatus.Confirmed;
     }
+
     public void Ship()
     {
         ValidateChangeStatus(OrderStatus.Shipped);

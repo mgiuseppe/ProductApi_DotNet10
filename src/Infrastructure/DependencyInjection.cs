@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IQueryContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IVoucherRepository, VoucherRepository>();
         return services;
     }
 }

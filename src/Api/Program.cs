@@ -15,6 +15,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
+app.MapVoucherEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
