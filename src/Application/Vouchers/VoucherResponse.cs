@@ -1,4 +1,4 @@
-using Domain;
+using Domain.Vouchers;
 
 namespace Application.Vouchers;
 

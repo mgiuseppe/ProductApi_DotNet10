@@ -1,7 +1,9 @@
-using Domain;
+using Domain.Orders;
+using Domain.Products;
+using Domain.Vouchers;
 using Microsoft.EntityFrameworkCore;
 
-namespace Application;
+namespace Application.Common.Interfaces;
 
 /// <summary>
 /// This interface will be used in our queries.

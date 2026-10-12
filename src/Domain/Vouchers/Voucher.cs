@@ -1,6 +1,6 @@
 using Domain.Exceptions;
 
-namespace Domain;
+namespace Domain.Vouchers;
 
 public class Voucher
 {

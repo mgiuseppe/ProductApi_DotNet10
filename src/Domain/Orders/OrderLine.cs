@@ -1,6 +1,7 @@
 using Domain.Exceptions;
+using Domain.Products;
 
-namespace Domain;
+namespace Domain.Orders;
 
 public class OrderLine
 {

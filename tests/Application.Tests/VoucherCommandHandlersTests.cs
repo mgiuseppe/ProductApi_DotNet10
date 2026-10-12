@@ -1,6 +1,7 @@
-using Application.Exceptions;
+using Application.Common.Exceptions;
+using Application.Common.Interfaces;
 using Application.Vouchers;
-using Domain;
+using Domain.Vouchers;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 

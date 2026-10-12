@@ -1,5 +1,5 @@
 using Application.Orders;
-using Domain;
+using Domain.Orders;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 

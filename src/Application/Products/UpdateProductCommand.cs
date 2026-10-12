@@ -1,4 +1,5 @@
-using Application.Exceptions;
+using Application.Common.Interfaces;
+using Application.Common.Exceptions;
 using MediatR;
 
 namespace Application.Products;

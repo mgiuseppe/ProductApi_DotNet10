@@ -1,6 +1,6 @@
-using Domain;
+using Domain.Orders;
 
-namespace Application;
+namespace Application.Common.Interfaces;
 
 public interface IOrderRepository
 {

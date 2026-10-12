@@ -1,4 +1,6 @@
-using Domain;
+using Domain.Orders;
+using Domain.Products;
+using Domain.Vouchers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

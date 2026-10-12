@@ -1,14 +1,7 @@
 using Domain.Exceptions;
+using Domain.Vouchers;
 
-namespace Domain;
-
-public enum OrderStatus
-{
-    Draft,
-    Confirmed,
-    Shipped,
-    Cancelled
-}
+namespace Domain.Orders;
 
 /// <summary>
 /// Order in status Draft acts as an implicit cart, see README § Order/Cart boundary for the reasoning, 

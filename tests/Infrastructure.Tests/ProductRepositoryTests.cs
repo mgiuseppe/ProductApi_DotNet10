@@ -1,4 +1,4 @@
-﻿using Domain;
+﻿using Domain.Products;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 

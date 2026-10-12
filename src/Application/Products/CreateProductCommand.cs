@@ -1,4 +1,5 @@
-using Domain;
+using Application.Common.Interfaces;
+using Domain.Products;
 using MediatR;
 
 namespace Application.Products;

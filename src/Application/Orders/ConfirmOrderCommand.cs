@@ -1,6 +1,7 @@
-using Application.Exceptions;
+using Application.Common.Interfaces;
+using Application.Common.Exceptions;
 using Application.Responses;
-using Domain;
+using Domain.Vouchers;
 using MediatR;
 
 namespace Application.Orders;

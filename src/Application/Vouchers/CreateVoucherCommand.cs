@@ -1,4 +1,5 @@
-using Domain;
+using Application.Common.Interfaces;
+using Domain.Vouchers;
 using MediatR;
 
 namespace Application.Vouchers;

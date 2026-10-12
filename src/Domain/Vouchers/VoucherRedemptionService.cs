@@ -1,6 +1,7 @@
 using Domain.Exceptions;
+using Domain.Orders;
 
-namespace Domain;
+namespace Domain.Vouchers;
 
 /// <summary>
 /// Single entry point for applying a voucher to an order: redeeming the voucher and confirming the order

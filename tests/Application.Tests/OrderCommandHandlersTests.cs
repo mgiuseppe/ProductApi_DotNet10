@@ -1,6 +1,10 @@
-using Application.Exceptions;
+using Application.Common.Exceptions;
+using Application.Common.Interfaces;
 using Application.Orders;
 using Domain;
+using Domain.Orders;
+using Domain.Products;
+using Domain.Vouchers;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 

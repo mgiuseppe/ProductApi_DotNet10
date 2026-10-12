@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Application.Responses;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

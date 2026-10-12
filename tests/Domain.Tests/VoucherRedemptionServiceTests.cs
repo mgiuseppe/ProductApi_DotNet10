@@ -1,4 +1,6 @@
 using Domain.Exceptions;
+using Domain.Orders;
+using Domain.Vouchers;
 
 namespace Domain.Tests;
 

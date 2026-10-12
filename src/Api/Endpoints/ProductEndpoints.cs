@@ -1,5 +1,5 @@
 using Api.Requests;
-using Application.Exceptions;
+using Application.Common.Exceptions;
 using Application.Products;
 using Domain.Exceptions;
 using MediatR;

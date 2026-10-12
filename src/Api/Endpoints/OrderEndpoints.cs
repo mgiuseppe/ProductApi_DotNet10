@@ -1,6 +1,6 @@
 using Api.Requests;
 using Application;
-using Application.Exceptions;
+using Application.Common.Exceptions;
 using Application.Orders;
 using Application.Responses;
 using Domain.Exceptions;

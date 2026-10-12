@@ -1,5 +1,5 @@
 using Application.Orders;
-using Domain;
+using Domain.Vouchers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;

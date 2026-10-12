@@ -1,6 +1,6 @@
-using Domain;
+using Domain.Products;
 
-namespace Application;
+namespace Application.Common.Interfaces;
 
 // Simple interface without UOW
 public interface IProductRepository

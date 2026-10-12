@@ -1,5 +1,6 @@
+using Application.Common.Interfaces;
 using Application.Responses;
-using Domain;
+using Domain.Orders;
 using MediatR;
 
 namespace Application.Orders;

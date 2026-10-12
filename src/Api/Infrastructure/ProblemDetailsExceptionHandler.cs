@@ -1,5 +1,5 @@
 using System;
-using Application.Exceptions;
+using Application.Common.Exceptions;
 using Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;

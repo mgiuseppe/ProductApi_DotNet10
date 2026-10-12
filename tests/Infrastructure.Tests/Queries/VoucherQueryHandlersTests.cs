@@ -1,5 +1,5 @@
 using Application.Vouchers;
-using Domain;
+using Domain.Vouchers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 

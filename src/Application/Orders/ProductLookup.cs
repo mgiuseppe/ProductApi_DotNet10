@@ -1,5 +1,6 @@
-using Application.Exceptions;
-using Domain;
+using Application.Common.Interfaces;
+using Application.Common.Exceptions;
+using Domain.Products;
 
 namespace Application.Orders;
 

@@ -1,6 +1,6 @@
 using System.Security.AccessControl;
-using Application;
-using Domain;
+using Application.Common.Interfaces;
+using Domain.Products;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure;

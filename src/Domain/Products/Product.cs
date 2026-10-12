@@ -1,6 +1,6 @@
 using Domain.Exceptions;
 
-namespace Domain;
+namespace Domain.Products;
 
 public class Product
 {

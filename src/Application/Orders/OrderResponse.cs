@@ -1,4 +1,4 @@
-using Domain;
+using Domain.Orders;
 
 namespace Application.Responses;
 

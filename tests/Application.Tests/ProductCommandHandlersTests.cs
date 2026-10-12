@@ -1,6 +1,7 @@
-using Application.Exceptions;
+using Application.Common.Exceptions;
+using Application.Common.Interfaces;
 using Application.Products;
-using Domain;
+using Domain.Products;
 using Moq;
 
 namespace Application.Tests;
