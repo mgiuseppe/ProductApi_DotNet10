@@ -29,103 +29,36 @@ public static class OrderEndpoints
 
         app.MapPost("/orders", async (CreateOrderCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var o = await mediator.Send(cmd, ct);
-                return Results.Created($"/orders/{o.Id}", o);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var o = await mediator.Send(cmd, ct);
+            return Results.Created($"/orders/{o.Id}", o);
         });
 
         app.MapPut("/orders/{id:guid}", async (Guid id, UpdateOrderRequest cmd, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var o = await mediator.Send(new UpdateOrderCommand(id, cmd.LinesToAdd, cmd.LinesToUpdate, cmd.LineIdsToDelete), ct);
-                return Results.Ok(o);
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var o = await mediator.Send(new UpdateOrderCommand(id, cmd.LinesToAdd, cmd.LinesToUpdate, cmd.LineIdsToDelete), ct);
+            return Results.Ok(o);
         });
 
         app.MapPost("/orders/{id:guid}/confirm", async (Guid id, Guid? voucherId, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var o = await mediator.Send(new ConfirmOrderCommand(id, voucherId), ct);
-                return Results.Ok(o);
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
-            catch (ConflictException e)
-            {
-                return Results.Conflict(e.Message);
-            }
+            var o = await mediator.Send(new ConfirmOrderCommand(id, voucherId), ct);
+            return Results.Ok(o);
         });
         app.MapPost("/orders/{id:guid}/ship", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var o = await mediator.Send(new ShipOrderCommand(id), ct);
-                return Results.Ok(o);
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var o = await mediator.Send(new ShipOrderCommand(id), ct);
+            return Results.Ok(o);
         });
         app.MapPost("/orders/{id:guid}/cancel", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var o = await mediator.Send(new CancelOrderCommand(id), ct);
-                return Results.Ok(o);
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var o = await mediator.Send(new CancelOrderCommand(id), ct);
+            return Results.Ok(o);
         });
 
         app.MapDelete("/orders/{id:guid}", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                await mediator.Send(new DeleteOrderCommand(id), ct);
-                return Results.NoContent();
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
+            await mediator.Send(new DeleteOrderCommand(id), ct);
+            return Results.NoContent();
         });
 
         return app;

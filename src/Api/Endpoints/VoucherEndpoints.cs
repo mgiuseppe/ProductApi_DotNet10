@@ -17,33 +17,14 @@ public static class VoucherEndpoints
 
         app.MapPost("/vouchers", async (CreateVoucherCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var v = await mediator.Send(cmd, ct);
-                return Results.Created($"/vouchers/{v.Id}", v);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var v = await mediator.Send(cmd, ct);
+            return Results.Created($"/vouchers/{v.Id}", v);
         });
 
         app.MapPost("/vouchers/{id:guid}/cancel", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var v = await mediator.Send(new CancelVoucherCommand(id), ct);
-                return Results.Ok(v);
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var v = await mediator.Send(new CancelVoucherCommand(id), ct);
+            return Results.Ok(v);
         });
 
         return app;

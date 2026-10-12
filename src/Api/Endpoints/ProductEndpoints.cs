@@ -26,49 +26,22 @@ public static class ProductEndpoints
 
         app.MapPost("/products", async (CreateProductCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var response = await mediator.Send(cmd, ct);
-                return Results.Created($"/products/{response.Id}", response);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var response = await mediator.Send(cmd, ct);
+            return Results.Created($"/products/{response.Id}", response);
         });
 
         app.MapPut("/products/{id:guid}", async (Guid id, UpdateProductRequest req, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var cmd = new UpdateProductCommand(id, req.Name, req.Price, req.Description);
-                var response = await mediator.Send(cmd, ct);
-                return Results.Ok(response);
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
-            catch (DomainException e)
-            {
-                return Results.BadRequest(e.Message);
-            }
+            var cmd = new UpdateProductCommand(id, req.Name, req.Price, req.Description);
+            var response = await mediator.Send(cmd, ct);
+            return Results.Ok(response);
         });
 
         app.MapDelete("/products/{id:guid}", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
-            try
-            {
-                var cmd = new DeleteProductCommand(id);
-                await mediator.Send(cmd, ct);
-                return Results.NoContent();
-            }
-            catch (NotFoundException e)
-            {
-                // TODO: log
-                return Results.NotFound(e.Message);
-            }
+            var cmd = new DeleteProductCommand(id);
+            await mediator.Send(cmd, ct);
+            return Results.NoContent();
         });
 
         return app;
