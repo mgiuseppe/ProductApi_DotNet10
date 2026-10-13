@@ -5,6 +5,8 @@ using Domain;
 using Domain.Orders;
 using Domain.Products;
 using Domain.Vouchers;
+using System.Diagnostics.Metrics;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -17,6 +19,7 @@ public class OrderCommandHandlersTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IVoucherRepository> _voucherRepository = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
+    private readonly Meter _meter = new(OrderMetrics.MeterName);
 
     [Fact]
     public async Task CreateOrder_WithLines_AddsOrderAndSaves()
@@ -191,11 +194,15 @@ public class OrderCommandHandlersTests
         SetupOrder(order);
         SetupProducts(product);
         var sut = NewConfirmOrderHandler();
+        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
 
         var result = await sut.Handle(new ConfirmOrderCommand(order.Id, null), CancellationToken.None);
 
         Assert.Equal(OrderStatus.Confirmed, result.Status);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var measurement = Assert.Single(confirmed.GetMeasurementSnapshot());
+        Assert.Equal(1, measurement.Value);
+        Assert.Equal(false, measurement.Tags["with_voucher"]);
     }
 
     [Fact]
@@ -264,6 +271,7 @@ public class OrderCommandHandlersTests
             .Setup(r => r.GetByIdAsync(voucher.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(voucher);
         var sut = NewConfirmOrderHandler();
+        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
 
         var result = await sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None);
 
@@ -272,6 +280,9 @@ public class OrderCommandHandlersTests
         Assert.Equal(voucher.Id, order.VoucherId);
         Assert.Equal(now, voucher.RedeemedOn);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        var measurement = Assert.Single(confirmed.GetMeasurementSnapshot());
+        Assert.Equal(1, measurement.Value);
+        Assert.Equal(true, measurement.Tags["with_voucher"]);
     }
 
     [Fact]
@@ -293,6 +304,32 @@ public class OrderCommandHandlersTests
             () => sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None));
 
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_WhenSaveThrowsConflict_RecordsConflictAndRethrows()
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 2);
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+        SetupOrder(order);
+        SetupProducts(product);
+        _voucherRepository
+            .Setup(r => r.GetByIdAsync(voucher.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(voucher);
+        _unitOfWork
+            .Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConflictException("Voucher already redeemed"));
+        var sut = NewConfirmOrderHandler();
+        using var conflicts = new MetricCollector<long>(_meter, "vouchers.redemption.concurrent_conflicts");
+        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
+
+        await Assert.ThrowsAsync<ConflictException>(
+            () => sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None));
+
+        Assert.Equal(1, Assert.Single(conflicts.GetMeasurementSnapshot()).Value);
+        Assert.Empty(confirmed.GetMeasurementSnapshot());
     }
 
     [Fact]
@@ -352,8 +389,18 @@ public class OrderCommandHandlersTests
     #region private helpers
     private ProductLookup NewProductLookup() => new(_productRepository.Object);
 
+    private OrderMetrics NewOrderMetrics()
+    {
+        // The factory hands out _meter, so tests can attach a MetricCollector to it
+        var meterFactory = new Mock<IMeterFactory>();
+        meterFactory
+            .Setup(f => f.Create(It.IsAny<MeterOptions>()))
+            .Returns(_meter);
+        return new OrderMetrics(meterFactory.Object);
+    }
+
     private ConfirmOrderCommandHandler NewConfirmOrderHandler() =>
-        new(_repository.Object, _voucherRepository.Object, new VoucherRedemptionService(), _unitOfWork.Object, NewProductLookup(), _timeProvider);
+        new(_repository.Object, _voucherRepository.Object, new VoucherRedemptionService(), _unitOfWork.Object, NewProductLookup(), _timeProvider, NewOrderMetrics());
 
     private void SetupOrder(Order order)
     {
