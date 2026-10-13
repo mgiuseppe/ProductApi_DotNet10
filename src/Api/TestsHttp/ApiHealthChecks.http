@@ -1,0 +1,7 @@
+@Api_HostAddress = http://localhost:5224
+
+### run just alive
+GET {{Api_HostAddress}}/alive
+
+### run every check (including db)
+GET {{Api_HostAddress}}/health

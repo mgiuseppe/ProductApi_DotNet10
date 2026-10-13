@@ -1,4 +1,6 @@
 using Application.Orders;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -33,5 +35,28 @@ public static class DependencyInjection
         }
 
         return builder;
+    }
+
+    public static WebApplicationBuilder AddDefaultHealthChecks(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddHealthChecks()
+                        .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
+        return builder;
+    }
+
+    public static WebApplication MapHealthChecks(this WebApplication app)
+    {
+        // Liveness: the process is up. 
+        // Runs only checks tagged as "live".
+        app.MapHealthChecks("/alive", new HealthCheckOptions 
+        { 
+            Predicate = check =>  check.Tags.Contains("live") 
+        });
+
+        // Readiness: the app can serve requests (database reachable).
+        // Runs every check.
+        app.MapHealthChecks("/health");
+
+        return app;
     }
 }

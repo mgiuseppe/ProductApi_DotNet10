@@ -6,9 +6,6 @@ using Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Instrumentation
-builder.AddCustomOpenTelemetry();
-
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -16,6 +13,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
 builder.Services.AddExceptionHandler<ProblemDetailsExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+// Observability & HealthChecks
+builder.AddCustomOpenTelemetry();
+builder.AddDefaultHealthChecks();
 
 var app = builder.Build();
 
@@ -26,6 +27,9 @@ if (app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
+
+// Health check
+app.MapHealthChecks();
 
 // custom endpoints
 app.MapTestEndpointsInDevelopment();

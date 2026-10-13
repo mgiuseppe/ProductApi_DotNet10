@@ -23,6 +23,9 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IVoucherRepository, VoucherRepository>();
+
+        services.AddHealthChecks()
+                .AddDbContextCheck<AppDbContext>("database", tags: ["ready"]);
         return services;
     }
 }
