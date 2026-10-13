@@ -18,7 +18,8 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
                                           VoucherRedemptionService redemption,
                                           IUnitOfWork uow, 
                                           ProductLookup productLookup,
-                                          TimeProvider timeProvider) : IRequestHandler<ConfirmOrderCommand, OrderWithLinesResponse>
+                                          TimeProvider timeProvider,
+                                          OrderMetrics metrics) : IRequestHandler<ConfirmOrderCommand, OrderWithLinesResponse>
 {
     public async Task<OrderWithLinesResponse> Handle(ConfirmOrderCommand request, CancellationToken cancellationToken)
     {
@@ -42,8 +43,17 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
             o.Confirm();
         }
 
-        await uow.SaveChangesAsync(cancellationToken);
-
+        try
+        {
+            await uow.SaveChangesAsync(cancellationToken);
+        }
+        catch (ConflictException)
+        {
+            metrics.VoucherRedemptionConcurrentConflict();
+            throw;
+        }
+        
+        metrics.OrderConfirmed(request.VoucherId != null);
         return OrderWithLinesResponse.FromDomain(o);
     }
 }

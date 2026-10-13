@@ -1,3 +1,4 @@
+using Application.Orders;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -22,6 +23,7 @@ public static class DependencyInjection
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
+                .AddMeter(OrderMetrics.MeterName)
                 .AddRuntimeInstrumentation());
 
         // export only when a collector is configured (OTEL_EXPORTER_OTLP_ENDPOINT)

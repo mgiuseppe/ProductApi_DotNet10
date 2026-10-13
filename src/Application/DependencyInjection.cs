@@ -12,6 +12,7 @@ public static class DependencyInjection
         services.AddScoped<ProductLookup>();
         services.AddSingleton<VoucherRedemptionService>();
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<OrderMetrics>();
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
         return services;
     }
