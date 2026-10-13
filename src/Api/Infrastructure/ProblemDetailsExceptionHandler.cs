@@ -20,7 +20,7 @@ internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExcep
             }),
             DomainException de => (StatusCodes.Status400BadRequest, new ProblemDetails {
                 Status = StatusCodes.Status400BadRequest,
-                Type = "ttps://tools.ietf.org/html/rfc9110#section-15.5.1",
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
                 Title = "Invalid Operation.",
                 Detail = de.Message
             }),
