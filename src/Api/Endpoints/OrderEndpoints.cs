@@ -27,6 +27,12 @@ public static class OrderEndpoints
             return Results.Ok(ps);
         });
 
+        app.MapGet("/orders/{id:guid}/history", async (Guid id, IMediator mediator, CancellationToken ct) =>
+        {
+            var o = await mediator.Send(new GetOrderHistoryQuery(id), ct);
+            return Results.Ok(o);
+        });
+
         app.MapPost("/orders", async (CreateOrderCommand cmd, IMediator mediator, CancellationToken ct) =>
         {
             var o = await mediator.Send(cmd, ct);

@@ -7,6 +7,7 @@ using Domain.Products;
 using Domain.Vouchers;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.Diagnostics.Metrics.Testing;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -18,6 +19,7 @@ public class OrderCommandHandlersTests
     private readonly Mock<IProductRepository> _productRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IVoucherRepository> _voucherRepository = new();
+    private readonly Mock<IOrderHistoryLog> _historyLog = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
     private readonly Meter _meter = new(OrderMetrics.MeterName);
 
@@ -330,6 +332,65 @@ public class OrderCommandHandlersTests
 
         Assert.Equal(1, Assert.Single(conflicts.GetMeasurementSnapshot()).Value);
         Assert.Empty(confirmed.GetMeasurementSnapshot());
+        _historyLog.Verify(l => l.AppendAsync(It.IsAny<OrderHistoryEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_WithVoucher_AppendsConfirmedEntryWithTotalAndVoucher()
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 2);
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+        SetupOrder(order);
+        SetupProducts(product);
+        _voucherRepository
+            .Setup(r => r.GetByIdAsync(voucher.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(voucher);
+        var appended = CaptureAppendedEntries();
+        var sut = NewConfirmOrderHandler();
+
+        await sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None);
+
+        var e = Assert.IsType<OrderConfirmedEntry>(Assert.Single(appended));
+        Assert.Equal(order.Id, e.OrderId);
+        Assert.Equal(now, e.OccurredAt);
+        Assert.Equal(15m, e.Total);
+        Assert.Equal(voucher.Id, e.VoucherId);
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_WhenAppendFails_StillReturnsConfirmedOrder()
+    {
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
+        SetupOrder(order);
+        SetupProducts(product);
+        SetupAppendFails();
+        var sut = NewConfirmOrderHandler();
+        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
+
+        var result = await sut.Handle(new ConfirmOrderCommand(order.Id, null), CancellationToken.None);
+
+        Assert.Equal(OrderStatus.Confirmed, result.Status);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Single(confirmed.GetMeasurementSnapshot());
+    }
+
+    [Fact]
+    public async Task ConfirmOrder_AppendsEntryWithoutRequestCancellationToken()
+    {
+        // Once the order is committed, a client disconnect must not drop the history entry
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 1);
+        SetupOrder(order);
+        SetupProducts(product);
+        using var cts = new CancellationTokenSource();
+        var sut = NewConfirmOrderHandler();
+
+        await sut.Handle(new ConfirmOrderCommand(order.Id, null), cts.Token);
+
+        _historyLog.Verify(l => l.AppendAsync(It.IsAny<OrderHistoryEntry>(), CancellationToken.None), Times.Once);
     }
 
     [Fact]
@@ -364,7 +425,7 @@ public class OrderCommandHandlersTests
     {
         var id = Guid.NewGuid();
         SetupOrderNotFound(id);
-        var sut = new CancelOrderCommandHandler(_repository.Object, _unitOfWork.Object);
+        var sut = NewCancelOrderHandler();
 
         await Assert.ThrowsAsync<NotFoundException>(
             () => sut.Handle(new CancelOrderCommand(id), CancellationToken.None));
@@ -378,7 +439,39 @@ public class OrderCommandHandlersTests
         var order = Order.Create().AddLine(Guid.NewGuid(), "Product", 10m, 1);
         order.Confirm();
         SetupOrder(order);
-        var sut = new CancelOrderCommandHandler(_repository.Object, _unitOfWork.Object);
+        var sut = NewCancelOrderHandler();
+
+        var result = await sut.Handle(new CancelOrderCommand(order.Id), CancellationToken.None);
+
+        Assert.Equal(OrderStatus.Cancelled, result.Status);
+        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CancelOrder_WithConfirmedOrder_AppendsCanceledEntry()
+    {
+        var order = Order.Create().AddLine(Guid.NewGuid(), "Product", 10m, 1);
+        order.Confirm();
+        SetupOrder(order);
+        var appended = CaptureAppendedEntries();
+        var sut = NewCancelOrderHandler();
+
+        await sut.Handle(new CancelOrderCommand(order.Id), CancellationToken.None);
+
+        var e = Assert.IsType<OrderCanceledEntry>(Assert.Single(appended));
+        Assert.Equal(order.Id, e.OrderId);
+        Assert.Equal(_timeProvider.GetUtcNow().UtcDateTime, e.OccurredAt);
+        Assert.Null(e.Reason);
+    }
+
+    [Fact]
+    public async Task CancelOrder_WhenAppendFails_StillReturnsCancelledOrder()
+    {
+        var order = Order.Create().AddLine(Guid.NewGuid(), "Product", 10m, 1);
+        order.Confirm();
+        SetupOrder(order);
+        SetupAppendFails();
+        var sut = NewCancelOrderHandler();
 
         var result = await sut.Handle(new CancelOrderCommand(order.Id), CancellationToken.None);
 
@@ -400,7 +493,28 @@ public class OrderCommandHandlersTests
     }
 
     private ConfirmOrderCommandHandler NewConfirmOrderHandler() =>
-        new(_repository.Object, _voucherRepository.Object, new VoucherRedemptionService(), _unitOfWork.Object, NewProductLookup(), _timeProvider, NewOrderMetrics());
+        new(_repository.Object, _voucherRepository.Object, new VoucherRedemptionService(), _unitOfWork.Object, NewProductLookup(), _timeProvider, NewOrderMetrics(),
+            _historyLog.Object, NullLogger<ConfirmOrderCommandHandler>.Instance);
+
+    private CancelOrderCommandHandler NewCancelOrderHandler() =>
+        new(_repository.Object, _unitOfWork.Object, _historyLog.Object, _timeProvider, NullLogger<CancelOrderCommandHandler>.Instance);
+
+    private List<OrderHistoryEntry> CaptureAppendedEntries()
+    {
+        var appended = new List<OrderHistoryEntry>();
+        _historyLog
+            .Setup(l => l.AppendAsync(It.IsAny<OrderHistoryEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<OrderHistoryEntry, CancellationToken>((e, _) => appended.Add(e))
+            .Returns(Task.CompletedTask);
+        return appended;
+    }
+
+    private void SetupAppendFails()
+    {
+        _historyLog
+            .Setup(l => l.AppendAsync(It.IsAny<OrderHistoryEntry>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Order history unavailable"));
+    }
 
     private void SetupOrder(Order order)
     {

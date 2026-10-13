@@ -8,8 +8,10 @@ This solution contains a product / catalog manager sample api implemented to ref
     ```bash
     dotnet ef database update --project src/Infrastructure --startup-project src/Api
     ```
-2. Run src/Api
-3. (optional) Observability: 
+2. docker run -d --name mongo -p 27017:27017 mongo
+3. Run src/Api
+
+4. (optional) Observability: 
     1. Start the Aspire dashboard with `docker run --rm -it -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard:latest`,
     2. Set the environment variable `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` in src/Api/Properties/launchSettings.json
     3. Open http://localhost:18888

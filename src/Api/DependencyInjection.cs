@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization.Metadata;
 using Application.Orders;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -72,5 +73,28 @@ public static class DependencyInjection
         app.MapHealthChecks(ReadinessPath);
 
         return app;
+    }
+
+    public static WebApplicationBuilder AddOrderHistoryJson(this WebApplicationBuilder builder)
+    {
+        builder.Services.ConfigureHttpJsonOptions(o =>
+        {
+            var resolver = o.SerializerOptions.TypeInfoResolver ?? new DefaultJsonTypeInfoResolver();
+            o.SerializerOptions.TypeInfoResolver = resolver.WithAddedModifier(ti =>
+            {
+                if (ti.Type != typeof(OrderHistoryEntry)) return;
+
+                ti.PolymorphismOptions = new JsonPolymorphismOptions
+                {
+                    TypeDiscriminatorPropertyName = "type",
+                    DerivedTypes =
+                    {
+                        new JsonDerivedType(typeof(OrderConfirmedEntry), OrderHistoryEntriesTypes.OrderConfirmedType),
+                        new JsonDerivedType(typeof(OrderCanceledEntry), OrderHistoryEntriesTypes.OrderCanceledType)
+                    }
+                };
+            });
+        });
+        return builder;
     }
 }

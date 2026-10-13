@@ -3,6 +3,7 @@ using Application.Common.Exceptions;
 using Application.Responses;
 using Domain.Vouchers;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Orders;
 
@@ -19,7 +20,9 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
                                           IUnitOfWork uow, 
                                           ProductLookup productLookup,
                                           TimeProvider timeProvider,
-                                          OrderMetrics metrics) : IRequestHandler<ConfirmOrderCommand, OrderWithLinesResponse>
+                                          OrderMetrics metrics,
+                                          IOrderHistoryLog history,
+                                          ILogger<ConfirmOrderCommandHandler> logger) : IRequestHandler<ConfirmOrderCommand, OrderWithLinesResponse>
 {
     public async Task<OrderWithLinesResponse> Handle(ConfirmOrderCommand request, CancellationToken cancellationToken)
     {
@@ -33,10 +36,11 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
                 o.UpdateLine(l.Id, prod.Price, l.Quantity);
         }
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         if (request.VoucherId is { } voucherId)
         {
             var voucher = await vouchers.GetByIdAsync(voucherId, cancellationToken) ?? throw new NotFoundException($"Voucher {voucherId} not found");
-            redemption.ConfirmWithVoucher(o, voucher, timeProvider.GetUtcNow().UtcDateTime);
+            redemption.ConfirmWithVoucher(o, voucher, now);
         }
         else
         {
@@ -53,6 +57,16 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
             throw;
         }
         
+        try
+        {
+            await history.AppendAsync(new OrderConfirmedEntry(Guid.CreateVersion7(), o.Id, now, o.Total, o.VoucherId), CancellationToken.None); // state already committed: don't let a client disconnect drop the log
+        }
+        catch (Exception e)
+        {
+            // log registration is not critical
+            logger.LogWarning(e, "Order history append failed for order {OrderId}", o.Id);
+        }
+
         metrics.OrderConfirmed(request.VoucherId != null);
         return OrderWithLinesResponse.FromDomain(o);
     }

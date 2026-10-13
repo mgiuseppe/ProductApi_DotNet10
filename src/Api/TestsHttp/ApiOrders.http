@@ -155,3 +155,8 @@ DELETE {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}
 
 ### Cancella di nuovo lo stesso id → 404
 DELETE {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}
+
+### === READ EVENTS ===
+
+### History of an order
+GET {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}/history

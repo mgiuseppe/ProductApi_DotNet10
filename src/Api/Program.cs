@@ -18,7 +18,13 @@ builder.Services.AddProblemDetails();
 builder.AddCustomOpenTelemetry();
 builder.AddDefaultHealthChecks();
 
+// Order event polymorphism
+builder.AddOrderHistoryJson();
+
 var app = builder.Build();
+
+// Mongo indexes (idempotent: no-op if they already exist)
+await app.Services.InitializeInfrastructureAsync();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
