@@ -33,8 +33,15 @@ public static class DependencyInjection
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddMeter(OrderMetrics.MeterName)
-                .AddRuntimeInstrumentation());
-
+                .AddRuntimeInstrumentation())
+            .WithLogging(
+                logging => {},
+                options =>
+                {
+                    options.IncludeScopes = true;
+                    options.IncludeFormattedMessage = true;
+                });
+        
         // export only when a collector is configured (OTEL_EXPORTER_OTLP_ENDPOINT)
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
         {
