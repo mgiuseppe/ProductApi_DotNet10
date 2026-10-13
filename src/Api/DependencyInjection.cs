@@ -24,7 +24,6 @@ public static class DependencyInjection
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation(options =>
                     // Health check probes are frequent and identical: keep them out of traces
-                    // (their EF Core child spans are dropped too, the sampler is parent-based)
                     options.Filter = context =>
                         !context.Request.Path.StartsWithSegments(LivenessPath) &&
                         !context.Request.Path.StartsWithSegments(ReadinessPath))
