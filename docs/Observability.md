@@ -74,4 +74,6 @@ The `database` check is registered by `Infrastructure` (`AddDbContextCheck<AppDb
 
 Both return `200 Healthy` or `503 Unhealthy` with a plain-text body.
 
+Both endpoints are excluded from tracing (`Filter` on the ASP.NET Core instrumentation): orchestrators and load balancers call them every few seconds, so they would flood the backend with identical traces. The EF Core spans of the `database` check are dropped as well, because the default sampler is parent-based. They still appear in the HTTP server metrics, which are aggregated and cheap. To investigate slow probes, remove the filter temporarily.
+
 Try them with `src/Api/TestsHttp/ApiHealthChecks.http`.

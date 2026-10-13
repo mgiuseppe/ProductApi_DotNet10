@@ -40,7 +40,7 @@ See [EFCore](docs/EFCore.md)
 
 - OpenTelemetry traces and metrics (automatic instrumentation), exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
 - Custom metrics: meter `ProductApi.Orders` with `orders.confirmed` and `vouchers.redemption.concurrent_conflicts`
-- Health checks: `/alive` (liveness) and `/health` (readiness, includes the database)
+- Health checks: `/alive` (liveness) and `/health` (readiness, includes the database), excluded from tracing
 
 See [Observability](docs/Observability.md)
 
