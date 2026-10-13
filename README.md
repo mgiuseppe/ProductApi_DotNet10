@@ -9,6 +9,10 @@ This solution contains a product / catalog manager sample api implemented to ref
     dotnet ef database update --project src/Infrastructure --startup-project src/Api
     ```
 2. Run src/Api
+3. (optional) Observability: 
+    1. Start the Aspire dashboard with `docker run --rm -it -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard:latest`,
+    2. Set the environment variable `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` in src/Api/Properties/launchSettings.json
+    3. Open http://localhost:18888
 
 ## Tools and vscodes plugins
 
@@ -32,6 +36,10 @@ See [Testing Strategy](docs/TestingStrategy.md)
 
 See [EFCore](docs/EFCore.md)
 
+## Observability
+
+See [Observability](docs/Instrumenting.md)
+
 ## Domain Simplifications
 
 See [Domain Simplifications](docs/DomainSimplifications.md)
@@ -46,4 +54,3 @@ See [Domain Simplifications](docs/DomainSimplifications.md)
 ## TODO 
 - autoformat before commit
 - test gateway before commit (prove it works!)
-- instrumenting (opentelemetry? behavior? graphana-prometeus? appinsight?)

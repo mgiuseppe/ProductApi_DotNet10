@@ -1,0 +1,10 @@
+@Api_HostAddress = http://localhost:5224
+
+### Slow, random delay
+GET {{Api_HostAddress}}/slow
+
+### Slow, fixed 1200 ms
+GET {{Api_HostAddress}}/slow?ms=1200
+
+### Unexpected error
+GET {{Api_HostAddress}}/boom

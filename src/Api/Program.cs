@@ -1,9 +1,13 @@
+using Api;
 using Api.Endpoints;
 using Api.Infrastructure;
 using Application;
 using Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Instrumentation
+builder.AddCustomOpenTelemetry();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -24,6 +28,7 @@ app.UseHttpsRedirection();
 app.UseExceptionHandler();
 
 // custom endpoints
+app.MapTestEndpointsInDevelopment();
 app.MapProductEndpoints();
 app.MapOrderEndpoints();
 app.MapVoucherEndpoints();

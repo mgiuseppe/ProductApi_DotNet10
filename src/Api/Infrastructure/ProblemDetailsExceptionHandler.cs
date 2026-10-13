@@ -1,4 +1,4 @@
-using System;
+using System.Diagnostics;
 using Application.Common.Exceptions;
 using Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Infrastructure;
 
-internal sealed class ProblemDetailsExceptionHandler : IExceptionHandler
+internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext ctx, Exception ex, CancellationToken ct)
     {
@@ -30,13 +30,16 @@ internal sealed class ProblemDetailsExceptionHandler : IExceptionHandler
                 Title = "There was a conflict.",
                 Detail = ce.Message
             }),
-            _ => (StatusCodes.Status500InternalServerError, new ProblemDetails
-            {
+            _ => (StatusCodes.Status500InternalServerError, new ProblemDetails {
                 Status = StatusCodes.Status500InternalServerError,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
-                Title = "Unexpected error"
+                Title = "Unexpected error",
+                Extensions = { ["traceId"] = Activity.Current?.TraceId.ToString() }
             })
         };
+
+        if(status == StatusCodes.Status500InternalServerError)
+            logger.LogError(ex, "Unhandled exception on {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
 
         ctx.Response.StatusCode = status;
         await ctx.Response.WriteAsJsonAsync(problemDetails, ct);
