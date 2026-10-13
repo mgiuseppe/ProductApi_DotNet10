@@ -1,6 +1,7 @@
 # Observability
 The API exposes three kinds of signals:
 - traces and metrics exported with OpenTelemetry (automatic instrumentation + a few custom metrics)
+- logs written with `ILogger`, exported with OpenTelemetry and correlated with the traces
 - health check endpoints (`/alive`, `/health`)
 
 ## Instrumenting
@@ -11,6 +12,25 @@ The API exposes three kinds of signals:
 EF Core does not create spans by itself: they come from the `OpenTelemetry.Instrumentation.EntityFrameworkCore` package (still prerelease), registered with `AddEntityFrameworkCoreInstrumentation()`. Each query becomes a child span of the request, with the SQL text.
 
 Data is exported over OTLP only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; without it nothing is sent, so the API runs without a collector.
+
+### Logs
+`UseOtlpExporter()` exports all three signals, logs included: every `ILogger` entry goes to the backend with the `TraceId`/`SpanId` of the current request, so from a log you can jump to its trace (and the `traceId` returned in a 500 ProblemDetails leads to both).
+
+`WithLogging()` in `Api/DependencyInjection.cs` sets two options, both `false` by default:
+
+| Option | Effect | Why |
+|---|---|---|
+| `IncludeScopes` | exports the `ILogger.BeginScope` values as log attributes. ASP.NET Core opens a scope for every request with `RequestPath`, `RequestId` and `ConnectionId` | `RequestPath` tells which endpoint wrote the log, also for logs that do not carry it (e.g. EF Core `Executed DbCommand`), and lets you filter logs by endpoint without going through the trace. Without the option these values are dropped |
+| `IncludeFormattedMessage` | the log message is the rendered text (`Unhandled exception on GET /boom`) instead of the template (`Unhandled exception on {Method} {Path}`) | readable messages in the backend. The parameters are still exported as separate attributes, so filtering works the same |
+
+About the scope fields:
+- `RequestPath`: the request path, the useful one.
+- `RequestId`: id of the single request (`HttpContext.TraceIdentifier`, `<ConnectionId>:<sequence>`). Mostly redundant with `TraceId`; it helps only when a request is not traced.
+- `ConnectionId`: id of the Kestrel TCP connection, shared by requests on the same keep-alive/HTTP/2 connection. Useful only for connection-level issues.
+
+Scopes exist only for logs written during a request: startup logs (`Now listening on...`) never have them.
+
+In the Aspire dashboard the scope attributes are visible in *Structured logs* → log details; the log entries shown inside a trace do not list them. The trace view shows the span name (`GET /orders/{id:guid}`), which is not the log message.
 
 ### Run the Aspire dashboard
 The standalone Aspire dashboard receives OTLP and shows traces, metrics and logs:
@@ -49,6 +69,7 @@ Sensitive data is hidden by default (privacy by default, GDPR):
       .EnableSensitiveDataLogging());
   ```
 - HTTP requests: query string values are redacted in the request spans (`url.query`) and request bodies are never recorded, for the same privacy/GDPR reasons.
+- Logs: the request scope adds only the path and technical ids (no client IP, headers, cookies, query string or body), the same path already present in the request span. Formatting the message adds no new data either. What matters is what we log: never pass personal data (emails, names, IPs, bodies) as log parameters and never put it in routes.
 
 ## Custom metrics
 `Application/Orders/OrderMetrics.cs` defines the meter `ProductApi.Orders`, created through `IMeterFactory` and registered as a singleton. `AddMeter(OrderMetrics.MeterName)` in `Api/DependencyInjection.cs` subscribes OpenTelemetry to it.
