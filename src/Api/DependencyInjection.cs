@@ -2,6 +2,7 @@ using System.Text.Json.Serialization.Metadata;
 using Application.Orders;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using MongoDB.Driver;
 using OpenTelemetry;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -29,7 +30,9 @@ public static class DependencyInjection
                         !context.Request.Path.StartsWithSegments(LivenessPath) &&
                         !context.Request.Path.StartsWithSegments(ReadinessPath))
                 .AddHttpClientInstrumentation()
-                .AddEntityFrameworkCoreInstrumentation())
+                .AddEntityFrameworkCoreInstrumentation()
+                // The MongoDB driver (3.x) emits its own spans natively: subscribing to its source is enough
+                .AddSource(MongoTelemetry.ActivitySourceName))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
