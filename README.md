@@ -1,24 +1,54 @@
 # Product API
 
-This solution contains a product / catalog manager sample api implemented to refresh .NET knowledge.
+This solution contains a product / order manager sample api implemented to refresh .NET knowledge.
 
 ## How To Run
 
-1. Start Postgres and MongoDB
-    ```bash
-    docker run -d --name productapi-postgres -p 5432:5432 -e POSTGRES_USER=productapi -e POSTGRES_PASSWORD=productapi -e POSTGRES_DB=productapi -v productapi-pgdata:/var/lib/postgresql postgres:18
-    docker run -d --name mongo -p 27017:27017 mongo
-    ```
-2. Apply migrations (connection string `DbConnection` in `src/Api/appsettings.Development.json`)
-    ```bash
-    dotnet ef database update --project src/Infrastructure --startup-project src/Api
-    ```
-3. Run src/Api
+### Prerequisites
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- Docker Desktop (running)
+- (optional) `dotnet-ef` to create/apply migrations from your machine: `dotnet tool install --global dotnet-ef`
 
-4. (optional) Observability: 
-    1. Start the Aspire dashboard with `docker run --rm -it -p 18888:18888 -p 4317:18889 mcr.microsoft.com/dotnet/aspire-dashboard:latest`,
-    2. Set the environment variable `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317` in src/Api/Properties/launchSettings.json
-    3. Open http://localhost:18888
+### Develop: infrastructure in Docker, API with F5
+
+1. Start the infrastructure
+    ```bash
+    docker compose up -d
+    ```
+    It starts Postgres (5432), MongoDB (27017) and the Aspire dashboard (UI 18888, OTLP 4317), then the `migrator` service applies the EF migrations and exits. The API is not started: it belongs to the `app` profile.
+2. Run `src/Api` with F5 (Visual Studio / VS Code with C# Dev Kit, `http` profile) or `dotnet run --project src/Api`
+    - API: http://localhost:5224, OpenAPI document at `/openapi/v1.json`
+    - `appsettings.Development.json` already points to the compose services (`localhost:5432`, `localhost:27017`) and sends telemetry to `http://localhost:4317`
+3. Open the Aspire dashboard at http://localhost:18888 to see traces, metrics and logs
+
+When you add a migration, apply it from your machine (faster than rebuilding the migrator image):
+```bash
+dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Api
+dotnet ef database update --project src/Infrastructure --startup-project src/Api
+```
+
+### Check Before Pushing: Run everything in Docker (profile `app`)
+
+The `api` service is in the `app` profile, so it starts only when the profile is enabled:
+```bash
+docker compose --profile app up --build -d
+```
+- API: http://localhost:8080, Aspire dashboard: http://localhost:18888
+- `--build` rebuilds the API and migrator images with your latest code
+- Useful to check the containerized app before pushing, or to try the app without the SDK.
+
+### Ports and `.env`
+
+Host ports default to the ones above. To change them, copy `.env.example` to `.env` (gitignored) and edit it: Compose reads it automatically.
+If you change `POSTGRES_PORT`, `MONGO_PORT` or `OTLP_PORT`, update `src/Api/appsettings.Development.json` as well, otherwise the F5 API won't find them.
+
+### Stop / reset
+
+```bash
+docker compose --profile app down     # stop and remove the containers (data is kept in volumes)
+docker compose --profile app down -v  # also delete the Postgres and Mongo data
+```
+`--profile app` is needed to also remove the `api` container if it was started.
 
 ## Tools and vscodes plugins
 

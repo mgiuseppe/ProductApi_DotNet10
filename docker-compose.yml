@@ -1,0 +1,84 @@
+# - docker compose up -d                      -> infrastructure only (postgres, mongo, aspire-dashboard, migrator): run the API with F5
+# - docker compose --profile app up --build -d -> everything, API included (http://localhost:8080)
+# Aspire dashboard: http://localhost:18888
+# Host ports default to the ones in appsettings.Development.json and can be overridden in a .env file (see .env.example)
+#
+# Development only: do not use these settings in production
+
+# Shared by api and migrator (both build the app host, so both need the two connection strings)
+x-connection-strings: &connection-strings
+  ConnectionStrings__DbConnection: "Host=postgres;Port=5432;Database=productapi;Username=productapi;Password=productapi"
+  ConnectionStrings__MongoDb: "mongodb://mongo:27017/productapi"
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: productapi
+      POSTGRES_PASSWORD: productapi
+      POSTGRES_DB: productapi
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # postgres 18+ stores data under /var/lib/postgresql/<major>/docker
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U productapi -d productapi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    environment:
+      # Local use only: skip the login token printed in the logs
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "${DASHBOARD_PORT:-18888}:18888" # UI
+      - "${OTLP_PORT:-4317}:18889"       # OTLP gRPC, for the API run with F5 (the containerized API uses the compose network)
+
+  # Applies EF migrations, then exits: the api starts only if it succeeds
+  migrator:
+    build:
+      context: .
+      target: migrator
+    environment:
+      <<: *connection-strings
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: [app] # started only with --profile app
+    build:
+      context: .
+      target: final
+    environment:
+      <<: *connection-strings
+      ASPNETCORE_ENVIRONMENT: Development # exposes /openapi/v1.json
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:18889"
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      mongo:
+        condition: service_healthy
+      aspire-dashboard:
+        condition: service_started
+
+volumes:
+  pgdata:
+  mongodata:
