@@ -95,6 +95,11 @@ See [Observability](docs/Observability.md)
 
 See [Domain Simplifications](docs/DomainSimplifications.md)
 
-## TODO 
-- autoformat before commit
-- test gateway before commit (prove it works!)
+## CI/CD
+see [CICD](docs/CICD.md)
+
+## TODO
+- add .editorconfig
+- add claude.md to add dotnet format --verify-no-changes before commit 
+- add claude.md to add a test gateway before push (prove it works!)
+- use claude to commit and push so that it can enforce rules
