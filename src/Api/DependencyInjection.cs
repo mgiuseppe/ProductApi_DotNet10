@@ -39,13 +39,13 @@ public static class DependencyInjection
                 .AddMeter(OrderMetrics.MeterName)
                 .AddRuntimeInstrumentation())
             .WithLogging(
-                logging => {},
+                logging => { },
                 options =>
                 {
                     options.IncludeScopes = true;
                     options.IncludeFormattedMessage = true;
                 });
-        
+
         // export only when a collector is configured (OTEL_EXPORTER_OTLP_ENDPOINT)
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
         {
@@ -66,9 +66,9 @@ public static class DependencyInjection
     {
         // Liveness: the process is up. 
         // Runs only checks tagged as "live".
-        app.MapHealthChecks(LivenessPath, new HealthCheckOptions 
-        { 
-            Predicate = check =>  check.Tags.Contains("live") 
+        app.MapHealthChecks(LivenessPath, new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("live")
         });
 
         // Readiness: the app can serve requests (database reachable).

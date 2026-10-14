@@ -15,8 +15,8 @@ public record OrderWithLinesResponse(Guid Id, OrderStatus Status, decimal Total,
 {
     public static OrderWithLinesResponse FromDomain(Order o)
     {
-        return new OrderWithLinesResponse(o.Id, 
-                                          o.Status, 
+        return new OrderWithLinesResponse(o.Id,
+                                          o.Status,
                                           o.Total,
                                           o.Lines.Select(l => OrderLineResponse.FromDomain(l)).ToList());
     }
@@ -26,11 +26,11 @@ public record OrderLineResponse(Guid Id, Guid ProductId, string ProductNameSnaps
 {
     public static OrderLineResponse FromDomain(OrderLine l)
     {
-        return new OrderLineResponse(l.Id, 
-                                     l.ProductId, 
-                                     l.ProductNameSnapshot, 
-                                     l.UnitPriceSnapshot, 
-                                     l.Quantity, 
+        return new OrderLineResponse(l.Id,
+                                     l.ProductId,
+                                     l.ProductNameSnapshot,
+                                     l.UnitPriceSnapshot,
+                                     l.Quantity,
                                      l.TotalPriceSnapshot);
     }
 }

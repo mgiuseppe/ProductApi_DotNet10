@@ -15,7 +15,7 @@ public class GetOrdersListQueryHandler(IQueryContext db) : IRequestHandler<GetOr
         return await db.Orders
                         .AsNoTracking()
                         .OrderBy(o => o.Id)
-                        .Skip((request.Page-1) * request.PageSize)
+                        .Skip((request.Page - 1) * request.PageSize)
                         .Take(request.PageSize)
                         .Select(o => OrderResponse.FromDomain(o)) // FromDomain runs in memory after the query is executed without projection, 
                                                                   // if you have many fields, don't use a c# function in select but map the fields

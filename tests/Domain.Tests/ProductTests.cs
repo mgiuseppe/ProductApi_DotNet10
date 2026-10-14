@@ -34,7 +34,7 @@ public class ProductTests
     [Fact]
     public void Create_WithNameTooLong_Throws()
     {
-        Assert.Throws<DomainException>(() => Product.Create(new string('x', Product.NameMaxLength+1), 10m, null));
+        Assert.Throws<DomainException>(() => Product.Create(new string('x', Product.NameMaxLength + 1), 10m, null));
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class ProductTests
     [Fact]
     public void Create_WithDescriptionTooLong_Throws()
     {
-        Assert.Throws<DomainException>(() => Product.Create("Test", 10m, new string('x', Product.DescriptionMaxLength+1)));
+        Assert.Throws<DomainException>(() => Product.Create("Test", 10m, new string('x', Product.DescriptionMaxLength + 1)));
     }
 
     [Fact]
@@ -78,16 +78,16 @@ public class ProductTests
         // Arrange
         var p = CreateValidProduct();
         // Act & Assert
-        Assert.Throws<DomainException>(() => p.Rename(new string('x', Product.NameMaxLength+1)));
+        Assert.Throws<DomainException>(() => p.Rename(new string('x', Product.NameMaxLength + 1)));
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(0.1)]
     public void ChangePrice_WithValidAmount_UpdatesPrice(double price)
-    {   
+    {
         // Arrange
-        var dPrice = (decimal) price; 
+        var dPrice = (decimal)price;
         var p = CreateValidProduct();
         // Act
         p.ChangePrice(dPrice);
@@ -97,11 +97,11 @@ public class ProductTests
 
     [Fact]
     public void ChangePrice_WithNegativeAmount_Trows()
-    {   
+    {
         // Arrange
         var p = CreateValidProduct();
         // Act & Assert
-        Assert.Throws<DomainException>(()=>p.ChangePrice(-0.01m));
+        Assert.Throws<DomainException>(() => p.ChangePrice(-0.01m));
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class ProductTests
         // Arrange
         var p = CreateValidProduct();
         // Act & Assert
-        Assert.Throws<DomainException>(() => p.ChangeDescription(new string('x', Product.DescriptionMaxLength+1)));
+        Assert.Throws<DomainException>(() => p.ChangeDescription(new string('x', Product.DescriptionMaxLength + 1)));
     }
 
     #region private helpers

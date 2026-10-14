@@ -19,7 +19,7 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
                 .HasForeignKey<Order>(o => o.VoucherId)
                 .OnDelete(DeleteBehavior.Restrict);
         builder.Property(o => o.DiscountAmount).HasPrecision(18, 2);
-        
+
         builder.HasMany(o => o.Lines)
                 .WithOne()
                 .HasForeignKey("OrderId") // Shadow property that will exist only on DB
@@ -30,8 +30,8 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Metadata.FindNavigation(nameof(Order.Lines))!
                         .SetPropertyAccessMode(PropertyAccessMode.Field); // EF will use the backing field _lines and not the property
 
-        builder.Ignore(o => o.SubTotal); 
-        builder.Ignore(o => o.Total); 
+        builder.Ignore(o => o.SubTotal);
+        builder.Ignore(o => o.Total);
 
         builder.ToTable(t => t.HasCheckConstraint("CK_Orders_DiscountAmount_NonNegative", "discount_amount >= 0"));
     }

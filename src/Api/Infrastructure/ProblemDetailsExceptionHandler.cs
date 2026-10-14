@@ -12,25 +12,29 @@ internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExcep
     {
         var (status, problemDetails) = ex switch
         {
-            NotFoundException ne => (StatusCodes.Status404NotFound, new ProblemDetails {
+            NotFoundException ne => (StatusCodes.Status404NotFound, new ProblemDetails
+            {
                 Status = StatusCodes.Status404NotFound,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.5",
                 Title = "The specified resource was not found.",
                 Detail = ne.Message
             }),
-            DomainException de => (StatusCodes.Status400BadRequest, new ProblemDetails {
+            DomainException de => (StatusCodes.Status400BadRequest, new ProblemDetails
+            {
                 Status = StatusCodes.Status400BadRequest,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
                 Title = "Invalid Operation.",
                 Detail = de.Message
             }),
-            ConflictException ce => (StatusCodes.Status409Conflict, new ProblemDetails {
+            ConflictException ce => (StatusCodes.Status409Conflict, new ProblemDetails
+            {
                 Status = StatusCodes.Status409Conflict,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.5.10",
                 Title = "There was a conflict.",
                 Detail = ce.Message
             }),
-            _ => (StatusCodes.Status500InternalServerError, new ProblemDetails {
+            _ => (StatusCodes.Status500InternalServerError, new ProblemDetails
+            {
                 Status = StatusCodes.Status500InternalServerError,
                 Type = "https://tools.ietf.org/html/rfc9110#section-15.6.1",
                 Title = "Unexpected error",
@@ -38,7 +42,7 @@ internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExcep
             })
         };
 
-        if(status == StatusCodes.Status500InternalServerError)
+        if (status == StatusCodes.Status500InternalServerError)
             logger.LogError(ex, "Unhandled exception on {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
 
         ctx.Response.StatusCode = status;

@@ -24,7 +24,8 @@ public class Voucher
         if (discountAmount <= 0)
             throw new DomainException("Discount amount must be a positive value");
 
-        return new Voucher { 
+        return new Voucher
+        {
             Id = Guid.NewGuid(),
             ValidityStartDate = validityStartDate,
             ValidityEndDate = validityEndDate,
@@ -40,7 +41,7 @@ public class Voucher
         ValidateIsNotCanceled();
         if (now < ValidityStartDate || now > ValidityEndDate)
             throw new DomainException("Voucher is not valid at this date");
-   
+
         RedeemedOn = now;
     }
 

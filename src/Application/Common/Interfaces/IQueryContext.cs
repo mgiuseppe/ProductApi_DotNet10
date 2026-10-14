@@ -11,7 +11,7 @@ namespace Application.Common.Interfaces;
 /// </summary>
 public interface IQueryContext
 {
-    DbSet<Product> Products {get;}
-    DbSet<Order> Orders {get;}
+    DbSet<Product> Products { get; }
+    DbSet<Order> Orders { get; }
     DbSet<Voucher> Vouchers { get; }
 }

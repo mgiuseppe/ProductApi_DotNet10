@@ -23,7 +23,7 @@ public sealed record OrderConfirmedEntry(Guid Id, Guid OrderId, DateTime Occurre
 {
     public const int CurrentVersion = 1;
 }
-public sealed record OrderCanceledEntry(Guid Id, Guid OrderId, DateTime OccurredAt, string? Reason) 
+public sealed record OrderCanceledEntry(Guid Id, Guid OrderId, DateTime OccurredAt, string? Reason)
         : OrderHistoryEntry(Id, OrderId, OccurredAt, SchemaVersion: CurrentVersion)
 {
     public const int CurrentVersion = 1;

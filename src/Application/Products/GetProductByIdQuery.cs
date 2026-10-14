@@ -13,7 +13,7 @@ public class GetProductByIdQueryHandler(IQueryContext db) : IRequestHandler<GetP
         var product = await db.Products
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == request.Id, cancellationToken);
-            
+
         return product is null ? null : ProductResponse.FromDomain(product);
     }
 }

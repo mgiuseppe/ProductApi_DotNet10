@@ -22,7 +22,7 @@ internal class CreateOrderCommandHandler(IOrderRepository ordersRepository,
             var prod = prodsById[l.ProductId];
             o.AddLine(l.ProductId, prod.Name, prod.Price, l.Quantity);
         }
-        
+
         await ordersRepository.AddAsync(o, cancellationToken);
         await uow.SaveChangesAsync(cancellationToken);
 

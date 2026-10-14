@@ -6,8 +6,8 @@ using MediatR;
 namespace Application.Orders;
 
 public record UpdateOrderCommand(Guid Id,
-                                 IReadOnlyList<CreateOrderLine> LinesToAdd, 
-                                 IReadOnlyList<UpdateOrderLine> LinesToUpdate, 
+                                 IReadOnlyList<CreateOrderLine> LinesToAdd,
+                                 IReadOnlyList<UpdateOrderLine> LinesToUpdate,
                                  IReadOnlyList<Guid> LineIdsToDelete) : IRequest<OrderWithLinesResponse>;
 public record UpdateOrderLine(Guid Id, int Quantity);
 
@@ -21,7 +21,7 @@ internal class UpdateOrderCommandHandler(IOrderRepository ordersRepository,
         var prodsById = await productLookup.GetProductsOrThrowAsync(request.LinesToAdd.Select(l => l.ProductId)
                                                                                       .Union(order.Lines.Select(l => l.ProductId))
                                                                                       .Distinct(), cancellationToken);
-    
+
         foreach (var l in request.LinesToAdd)
         {
             var prod = prodsById[l.ProductId];

@@ -51,7 +51,7 @@ public class Product
     public Product ChangeDescription(string? description)
     {
         ValidateDescription(description);
-        
+
         Description = description;
         return this;
     }

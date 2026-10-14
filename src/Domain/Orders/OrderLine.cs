@@ -5,13 +5,13 @@ namespace Domain.Orders;
 
 public class OrderLine
 {
-    public Guid Id {get; private set;}
-    public Guid ProductId {get; private set;}
-    public string ProductNameSnapshot {get; private set;} = "";
-    public decimal UnitPriceSnapshot {get; private set;} 
-    public int Quantity {get; private set;}
+    public Guid Id { get; private set; }
+    public Guid ProductId { get; private set; }
+    public string ProductNameSnapshot { get; private set; } = "";
+    public decimal UnitPriceSnapshot { get; private set; }
+    public int Quantity { get; private set; }
 
-    public decimal TotalPriceSnapshot => UnitPriceSnapshot * Quantity; 
+    public decimal TotalPriceSnapshot => UnitPriceSnapshot * Quantity;
 
     private OrderLine()
     {

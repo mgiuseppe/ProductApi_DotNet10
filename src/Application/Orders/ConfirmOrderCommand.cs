@@ -13,10 +13,10 @@ public record ConfirmOrderCommand(Guid Id, Guid? VoucherId) : IRequest<OrderWith
 /// See README § Order/Cart boundary for the reasoning — this is a deliberate simplification: 
 /// A real e-commerce would surface price changes to the user before checkout.
 /// </summary>
-internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository, 
+internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
                                           IVoucherRepository vouchers,
                                           VoucherRedemptionService redemption,
-                                          IUnitOfWork uow, 
+                                          IUnitOfWork uow,
                                           ProductLookup productLookup,
                                           TimeProvider timeProvider,
                                           OrderMetrics metrics) : IRequestHandler<ConfirmOrderCommand, OrderWithLinesResponse>
@@ -25,7 +25,7 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
     {
         var o = await ordersRepository.GetByIdAsync(request.Id, cancellationToken) ?? throw new NotFoundException($"Order {request.Id} not found");
         var prodsById = await productLookup.GetProductsOrThrowAsync(o.Lines.Select(l => l.ProductId), cancellationToken);
-        
+
         foreach (var l in o.Lines)
         {
             var prod = prodsById[l.ProductId];

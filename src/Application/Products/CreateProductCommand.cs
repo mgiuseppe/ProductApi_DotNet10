@@ -13,7 +13,7 @@ public class CreateProductCommandHandler(IProductRepository repository, IUnitOfW
         var product = Product.Create(request.Name, request.Price, request.Description);
         await repository.AddAsync(product, cancellationToken);
         await uow.SaveChangesAsync(cancellationToken);
-        
+
         return ProductResponse.FromDomain(product);
     }
 }

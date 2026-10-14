@@ -20,12 +20,12 @@ public static class DependencyInjection
     {
         // EF
         var csEF = configuration.GetConnectionString(EFConnectionStringName);
-        if(string.IsNullOrEmpty(csEF))
-            throw new InvalidOperationException($"Connection string '{EFConnectionStringName}' cannot be empty");   
+        if (string.IsNullOrEmpty(csEF))
+            throw new InvalidOperationException($"Connection string '{EFConnectionStringName}' cannot be empty");
 
         services.AddScoped<DispatchDomainEventsInterceptor>();
 
-        services.AddDbContext<AppDbContext>((sp, options) => 
+        services.AddDbContext<AppDbContext>((sp, options) =>
                         options.UseAppDatabase(csEF)
                                .AddInterceptors(sp.GetRequiredService<DispatchDomainEventsInterceptor>()));
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -54,8 +54,8 @@ public static class DependencyInjection
         // Health Checks
         services.AddHealthChecks()
                 .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
-                .AddMongoDb(dbFactory: sp => sp.GetRequiredService<IMongoDatabase>(), 
-                            name: "mongodb", 
+                .AddMongoDb(dbFactory: sp => sp.GetRequiredService<IMongoDatabase>(),
+                            name: "mongodb",
                             tags: ["ready"],
                             timeout: TimeSpan.FromSeconds(5));
         return services;

@@ -27,7 +27,7 @@ public class Order : BaseAggregateRoot
 
     public decimal SubTotal => _lines.Sum(l => l.TotalPriceSnapshot);
     public decimal Total => SubTotal - DiscountAmount;
-    
+
     private Order()
     {
     }
@@ -74,10 +74,10 @@ public class Order : BaseAggregateRoot
         ValidateChangeStatus(OrderStatus.Confirmed);
         if (!_lines.Any())
             throw new DomainException("Cannot confirm order without lines");
-        
+
         if (voucher is not null)
         {
-            if (voucher.VoucherId  == Guid.Empty) throw new DomainException("Voucher Id cannot be empty");
+            if (voucher.VoucherId == Guid.Empty) throw new DomainException("Voucher Id cannot be empty");
             if (voucher.Amount > SubTotal) throw new DomainException("Voucher amount exceeds the order subtotal");
             VoucherId = voucher.VoucherId;
             DiscountAmount = voucher.Amount;
