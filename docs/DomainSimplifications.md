@@ -2,8 +2,7 @@
 This project is a learning exercise, so several areas are deliberately simplified.
 
 ## Order and cart
-- `Order.Draft` acts as an implicit cart: lines can be edited freely, and their prices follow the current product price. `ConfirmOrderCommandHandler` silently re-syncs stale prices before confirming. A real e-commerce would model `Cart` as a separate aggregate, create an immutable `Order` at checkout, and show price changes to the user before charging.
-- Order.ConfirmAsync re-reads current product prices and silently updates any stale line before confirming, rather than rejecting the confirmation. In a real  e-commerce, the user would typically see a "price has changed" confirmation step before checkout rather than a silent update. Simplified here.
+- `Order.Draft` acts as an implicit cart: lines can be edited freely and their prices follow the current product price. `ConfirmOrderCommandHandler` silently re-syncs stale prices before confirming, rather than rejecting the confirmation. A real e-commerce would model `Cart` as a separate aggregate, create an immutable `Order` at checkout, and show a "price has changed" step to the user before charging.
 - One status per order, no per-line status. Partial shipments, returns and partial cancellations are out of scope.
 - `Subtotal` and `Total` are computed in memory, not persisted. Lists of orders map entities in memory after `ToListAsync`, which is fine for the few columns involved.
 
