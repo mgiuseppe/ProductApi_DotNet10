@@ -1,30 +1,31 @@
 using Domain.Common;
 using MediatR;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Interceptors;
 
 /// <summary>
-/// This is a Learning example, not a production recipe.** Domain events are published after the commit and are
-/// best-effort: a crash loses them, and an outer transaction that rolls back after the publication leaves
-/// false records on MongoDB. For events that matter, write them in the same database, in the same transaction, or use an outbox.
+/// This is a Learning example, not a complete production recipe.
+/// Domain events are published and handled before the commit. 
+/// If a handler throws, changes are not committed and you should add trycatch if it's not intended to work in this way. 
+/// If the transaction is rolled back, records on mongodb are still persisted and become orphans because they're not under the same transaction as EF.
+/// See DomainEventsHandling.md for further info.
 /// </summary>
-public class DispatchDomainEventsInterceptor(IMediator mediator, ILogger<DispatchDomainEventsInterceptor> logger) : SaveChangesInterceptor
+public class DispatchDomainEventsInterceptor(IMediator mediator) : SaveChangesInterceptor
 {
-    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+    public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
-        DispatchDomainEvents(eventData).GetAwaiter().GetResult();
-        return base.SavedChanges(eventData, result);
+        DispatchDomainEvents(eventData, CancellationToken.None).GetAwaiter().GetResult();
+        return base.SavingChanges(eventData, result);
     }
 
-    public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+    public async override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        await DispatchDomainEvents(eventData);
-        return await base.SavedChangesAsync(eventData, result, cancellationToken);
+        await DispatchDomainEvents(eventData, cancellationToken);
+        return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
-    private async Task DispatchDomainEvents(SaveChangesCompletedEventData data)
+    private async Task DispatchDomainEvents(DbContextEventData data, CancellationToken cancellationToken)
     {
         if (data.Context == null) return;
 
@@ -38,16 +39,7 @@ public class DispatchDomainEventsInterceptor(IMediator mediator, ILogger<Dispatc
         aggregates.ToList().ForEach(a => a.ClearDomainEvents());
 
         foreach(var e in domainEvents)
-        {
-            try
-            {
-                await mediator.Publish(e);   
-            }
-            catch (Exception ex) // events are not critical, changes have already been saved
-            {
-                logger.LogWarning(ex, "event {EventType} handling failed", e.GetType());
-            }
-        }
+            await mediator.Publish(e, cancellationToken);
         
         return;
     }

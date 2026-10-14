@@ -54,6 +54,7 @@ internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
             throw;
         }
 
+        metrics.OrderConfirmed(o.VoucherId != null);
         return OrderWithLinesResponse.FromDomain(o);
     }
 }

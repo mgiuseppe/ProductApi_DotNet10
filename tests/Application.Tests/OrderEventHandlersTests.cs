@@ -1,10 +1,6 @@
 using Application.Common.Interfaces;
 using Application.Orders;
 using Domain.Orders;
-using System.Diagnostics.Metrics;
-using Microsoft.Extensions.Diagnostics.Metrics.Testing;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Testing;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 
@@ -14,14 +10,13 @@ public class OrderEventHandlersTests
 {
     private readonly Mock<IOrderHistoryLog> _historyLog = new();
     private readonly FakeTimeProvider _timeProvider = new(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero));
-    private readonly Meter _meter = new(OrderMetrics.MeterName);
 
     [Fact]
     public async Task OrderConfirmed_AppendsConfirmedEntryWithEventSnapshot()
     {
         var e = new OrderConfirmedDomainEvent(Guid.NewGuid(), 15m, Guid.NewGuid());
         var appended = CaptureAppendedEntries();
-        var sut = NewConfirmedHandler(new FakeLogger<OrderConfirmedEventHandler>());
+        var sut = NewConfirmedHandler();
 
         await sut.Handle(e, CancellationToken.None);
 
@@ -33,54 +28,28 @@ public class OrderEventHandlersTests
         Assert.Equal(e.VoucherId, entry.VoucherId);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task OrderConfirmed_RecordsConfirmedMetricWithVoucherTag(bool withVoucher)
-    {
-        var e = new OrderConfirmedDomainEvent(Guid.NewGuid(), 15m, withVoucher ? Guid.NewGuid() : null);
-        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
-        var sut = NewConfirmedHandler(new FakeLogger<OrderConfirmedEventHandler>());
-
-        await sut.Handle(e, CancellationToken.None);
-
-        var measurement = Assert.Single(confirmed.GetMeasurementSnapshot());
-        Assert.Equal(1, measurement.Value);
-        Assert.Equal(withVoucher, measurement.Tags["with_voucher"]);
-    }
-
     [Fact]
-    public async Task OrderConfirmed_WhenAppendFails_LogsErrorAndStillRecordsMetric()
+    public async Task OrderConfirmed_WhenAppendFails_Throws()
     {
+        // Handled before the commit: the exception must reach SaveChanges so the order is not saved
         var e = new OrderConfirmedDomainEvent(Guid.NewGuid(), 15m, null);
         SetupAppendFails();
-        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
-        var logger = new FakeLogger<OrderConfirmedEventHandler>();
-        var sut = NewConfirmedHandler(logger);
+        var sut = NewConfirmedHandler();
 
-        await sut.Handle(e, CancellationToken.None);
-
-        Assert.Single(confirmed.GetMeasurementSnapshot());
-        var log = Assert.Single(logger.Collector.GetSnapshot());
-        Assert.Equal(LogLevel.Error, log.Level);
-        Assert.IsType<InvalidOperationException>(log.Exception);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(e, CancellationToken.None));
     }
 
     [Fact]
-    public async Task OrderConfirmed_AppendsEvenWhenRequestIsCanceled()
+    public async Task OrderConfirmed_PassesRequestCancellationTokenToAppend()
     {
-        // Once the order is committed, a client disconnect must not drop the history entry
         var e = new OrderConfirmedDomainEvent(Guid.NewGuid(), 15m, null);
         var tokens = CaptureAppendTokens();
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
-        var sut = NewConfirmedHandler(new FakeLogger<OrderConfirmedEventHandler>());
+        var sut = NewConfirmedHandler();
 
         await sut.Handle(e, cts.Token);
 
-        var token = Assert.Single(tokens);
-        Assert.False(token.IsCancellationRequested);
-        Assert.True(token.CanBeCanceled); // bounded by its own timeout
+        Assert.Equal(cts.Token, Assert.Single(tokens));
     }
 
     [Fact]
@@ -88,7 +57,7 @@ public class OrderEventHandlersTests
     {
         var e = new OrderCanceledDomainEvent(Guid.NewGuid());
         var appended = CaptureAppendedEntries();
-        var sut = NewCanceledHandler(new FakeLogger<OrderCanceledEventHandler>());
+        var sut = NewCanceledHandler();
 
         await sut.Handle(e, CancellationToken.None);
 
@@ -100,52 +69,34 @@ public class OrderEventHandlersTests
     }
 
     [Fact]
-    public async Task OrderCanceled_WhenAppendFails_LogsErrorWithoutThrowing()
+    public async Task OrderCanceled_WhenAppendFails_Throws()
     {
         var e = new OrderCanceledDomainEvent(Guid.NewGuid());
         SetupAppendFails();
-        var logger = new FakeLogger<OrderCanceledEventHandler>();
-        var sut = NewCanceledHandler(logger);
+        var sut = NewCanceledHandler();
 
-        await sut.Handle(e, CancellationToken.None);
-
-        var log = Assert.Single(logger.Collector.GetSnapshot());
-        Assert.Equal(LogLevel.Error, log.Level);
-        Assert.IsType<InvalidOperationException>(log.Exception);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(e, CancellationToken.None));
     }
 
     [Fact]
-    public async Task OrderCanceled_AppendsEvenWhenRequestIsCanceled()
+    public async Task OrderCanceled_PassesRequestCancellationTokenToAppend()
     {
         var e = new OrderCanceledDomainEvent(Guid.NewGuid());
         var tokens = CaptureAppendTokens();
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
-        var sut = NewCanceledHandler(new FakeLogger<OrderCanceledEventHandler>());
+        var sut = NewCanceledHandler();
 
         await sut.Handle(e, cts.Token);
 
-        var token = Assert.Single(tokens);
-        Assert.False(token.IsCancellationRequested);
-        Assert.True(token.CanBeCanceled);
+        Assert.Equal(cts.Token, Assert.Single(tokens));
     }
 
     #region private helpers
-    private OrderMetrics NewOrderMetrics()
-    {
-        // The factory hands out _meter, so tests can attach a MetricCollector to it
-        var meterFactory = new Mock<IMeterFactory>();
-        meterFactory
-            .Setup(f => f.Create(It.IsAny<MeterOptions>()))
-            .Returns(_meter);
-        return new OrderMetrics(meterFactory.Object);
-    }
+    private OrderConfirmedEventHandler NewConfirmedHandler() =>
+        new(_historyLog.Object, _timeProvider);
 
-    private OrderConfirmedEventHandler NewConfirmedHandler(FakeLogger<OrderConfirmedEventHandler> logger) =>
-        new(_historyLog.Object, NewOrderMetrics(), logger, _timeProvider);
-
-    private OrderCanceledEventHandler NewCanceledHandler(FakeLogger<OrderCanceledEventHandler> logger) =>
-        new(_historyLog.Object, logger, _timeProvider);
+    private OrderCanceledEventHandler NewCanceledHandler() =>
+        new(_historyLog.Object, _timeProvider);
 
     private List<OrderHistoryEntry> CaptureAppendedEntries()
     {

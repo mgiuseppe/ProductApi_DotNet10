@@ -4,7 +4,6 @@ using Infrastructure.Interceptors;
 using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
 namespace Infrastructure.Tests.Interceptors;
@@ -97,17 +96,19 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
 
     // Integration Test
     [Fact]
-    public async Task SaveChangesAsync_PublishesOnlyAfterCommit()
+    public async Task SaveChangesAsync_PublishesBeforeCommit()
     {
-        // The handler reads the order from a separate context: it must already be in the database
+        // The handler reads the order from a separate context: it must not be in the database yet
         var order = NewConfirmedOrder();
-        OrderStatus? statusSeenByHandler = null;
+        var handlerRan = false;
+        Order? seenByHandler = null;
         _mediator
             .Setup(m => m.Publish(It.IsAny<BaseDomainEvent>(), It.IsAny<CancellationToken>()))
             .Returns(async () =>
             {
+                handlerRan = true;
                 await using var other = new AppDbContext(NewOptions(withInterceptor: false));
-                statusSeenByHandler = (await other.Orders.SingleOrDefaultAsync(o => o.Id == order.Id))?.Status;
+                seenByHandler = await other.Orders.SingleOrDefaultAsync(o => o.Id == order.Id);
             });
 
         await using (var db = NewContext())
@@ -116,13 +117,66 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
             await db.SaveChangesAsync();
         }
 
-        Assert.Equal(OrderStatus.Confirmed, statusSeenByHandler);
+        Assert.True(handlerRan);
+        Assert.Null(seenByHandler);
     }
 
     // Integration Test
     [Fact]
-    public async Task SaveChangesAsync_WhenSaveFails_PublishesNothingAndKeepsEvents()
+    public async Task SaveChangesAsync_SavesChangesMadeByHandlersInTheSameCommit()
     {
+        // DetectChanges runs after SavingChanges, so entities added by a handler are saved too
+        var order = NewConfirmedOrder();
+        var addedByHandler = Order.Create().AddLine(Guid.NewGuid(), "Mouse", 19.90m, 1);
+        await using (var db = NewContext())
+        {
+            _mediator
+                .Setup(m => m.Publish(It.IsAny<BaseDomainEvent>(), It.IsAny<CancellationToken>()))
+                .Callback(() => db.Orders.Add(addedByHandler))
+                .Returns(Task.CompletedTask);
+
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = NewContext())
+        {
+            Assert.True(await db.Orders.AnyAsync(o => o.Id == order.Id));
+            Assert.True(await db.Orders.AnyAsync(o => o.Id == addedByHandler.Id));
+        }
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task SaveChangesAsync_DoesNotPublishEventsRaisedByHandlers()
+    {
+        var order = NewConfirmedOrder();
+        var addedByHandler = NewConfirmedOrder();
+        await using (var db = NewContext())
+        {
+            _mediator
+                .Setup(m => m.Publish(It.IsAny<BaseDomainEvent>(), It.IsAny<CancellationToken>()))
+                .Callback<BaseDomainEvent, CancellationToken>((e, _) =>
+                {
+                    _published.Add(e);
+                    db.Orders.Add(addedByHandler);
+                })
+                .Returns(Task.CompletedTask);
+
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+        }
+
+        var published = Assert.IsType<OrderConfirmedDomainEvent>(Assert.Single(_published));
+        Assert.Equal(order.Id, published.OrderId);
+        Assert.Single(addedByHandler.DomainEvents); // collected before the handler ran: never dispatched
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task SaveChangesAsync_WhenSaveFails_EventsAreAlreadyPublished()
+    {
+        // Published before the commit: a failed save does not undo what the handlers did
         using var emptyDb = new SqliteConnection("DataSource=:memory:"); // no tables: the save fails
         emptyDb.Open();
         var options = new DbContextOptionsBuilder<AppDbContext>()
@@ -130,6 +184,7 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
                             .AddInterceptors(NewInterceptor())
                             .Options;
         var order = NewConfirmedOrder();
+        var raised = order.DomainEvents.Single();
 
         await using (var db = new AppDbContext(options))
         {
@@ -137,13 +192,12 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
             await Assert.ThrowsAnyAsync<Exception>(() => db.SaveChangesAsync());
         }
 
-        Assert.Empty(_published);
-        Assert.Single(order.DomainEvents);
+        Assert.Same(raised, Assert.Single(_published));
     }
 
     // Integration Test
     [Fact]
-    public async Task SaveChangesAsync_WhenPublishFails_KeepsSavedChangesAndPublishesFollowingEvents()
+    public async Task SaveChangesAsync_WhenPublishFails_ThrowsAndSavesNothing()
     {
         var order = NewConfirmedOrder();
         order.Cancel(); // two events: confirmed, then canceled
@@ -160,16 +214,55 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
         await using (var db = NewContext())
         {
             db.Orders.Add(order);
-            await db.SaveChangesAsync(); // does not throw
+            await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
         }
 
-        Assert.IsType<OrderCanceledDomainEvent>(Assert.Single(_published));
-        Assert.Empty(order.DomainEvents);
+        Assert.Empty(_published); // sequential publisher: the following handlers do not run
         await using (var db = NewContext())
         {
-            var saved = await db.Orders.SingleAsync(o => o.Id == order.Id);
-            Assert.Equal(OrderStatus.Cancelled, saved.Status);
+            Assert.False(await db.Orders.AnyAsync(o => o.Id == order.Id));
         }
+    }
+
+    // Integration Test
+    [Fact]
+    public void SaveChanges_WhenPublishFails_ThrowsAndSavesNothing()
+    {
+        var order = NewConfirmedOrder();
+        _mediator
+            .Setup(m => m.Publish(It.IsAny<BaseDomainEvent>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Handler failed"));
+
+        using (var db = NewContext())
+        {
+            db.Orders.Add(order);
+            Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
+        }
+
+        using (var db = NewContext())
+        {
+            Assert.False(db.Orders.Any(o => o.Id == order.Id));
+        }
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task SaveChangesAsync_PassesCancellationTokenToPublish()
+    {
+        var tokens = new List<CancellationToken>();
+        _mediator
+            .Setup(m => m.Publish(It.IsAny<BaseDomainEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<BaseDomainEvent, CancellationToken>((_, ct) => tokens.Add(ct))
+            .Returns(Task.CompletedTask);
+        using var cts = new CancellationTokenSource();
+
+        await using (var db = NewContext())
+        {
+            db.Orders.Add(NewConfirmedOrder());
+            await db.SaveChangesAsync(cts.Token);
+        }
+
+        Assert.Equal(cts.Token, Assert.Single(tokens));
     }
 
     // Integration Test
@@ -196,8 +289,7 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
         return order;
     }
 
-    private DispatchDomainEventsInterceptor NewInterceptor() =>
-        new(_mediator.Object, NullLogger<DispatchDomainEventsInterceptor>.Instance);
+    private DispatchDomainEventsInterceptor NewInterceptor() => new(_mediator.Object);
 
     private DbContextOptions<AppDbContext> NewOptions(bool withInterceptor = true)
     {

@@ -299,7 +299,7 @@ public class OrderCommandHandlersTests
     }
 
     [Fact]
-    public async Task ConfirmOrder_WhenSaveThrowsConflict_RecordsConflictAndRethrows()
+    public async Task ConfirmOrder_WhenSaveThrowsConflict_RecordsConflictOnlyAndRethrows()
     {
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         var product = Product.Create("Product", 10m);
@@ -315,11 +315,37 @@ public class OrderCommandHandlersTests
             .ThrowsAsync(new ConflictException("Voucher already redeemed"));
         var sut = NewConfirmOrderHandler();
         using var conflicts = new MetricCollector<long>(_meter, "vouchers.redemption.concurrent_conflicts");
+        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
 
         await Assert.ThrowsAsync<ConflictException>(
             () => sut.Handle(new ConfirmOrderCommand(order.Id, voucher.Id), CancellationToken.None));
 
         Assert.Equal(1, Assert.Single(conflicts.GetMeasurementSnapshot()).Value);
+        Assert.Empty(confirmed.GetMeasurementSnapshot());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ConfirmOrder_AfterSave_RecordsConfirmedMetricWithVoucherTag(bool withVoucher)
+    {
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var product = Product.Create("Product", 10m);
+        var order = Order.Create().AddLine(product.Id, product.Name, product.Price, 2);
+        var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+        SetupOrder(order);
+        SetupProducts(product);
+        _voucherRepository
+            .Setup(r => r.GetByIdAsync(voucher.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(voucher);
+        var sut = NewConfirmOrderHandler();
+        using var confirmed = new MetricCollector<long>(_meter, "orders.confirmed");
+
+        await sut.Handle(new ConfirmOrderCommand(order.Id, withVoucher ? voucher.Id : null), CancellationToken.None);
+
+        var measurement = Assert.Single(confirmed.GetMeasurementSnapshot());
+        Assert.Equal(1, measurement.Value);
+        Assert.Equal(withVoucher, measurement.Tags["with_voucher"]);
     }
 
     [Fact]

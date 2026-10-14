@@ -3,7 +3,6 @@ using Infrastructure.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Configuration;
@@ -57,8 +56,7 @@ public static class DependencyInjection
                 .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
                 .AddMongoDb(dbFactory: sp => sp.GetRequiredService<IMongoDatabase>(), 
                             name: "mongodb", 
-                            tags: ["ready"], 
-                            failureStatus: HealthStatus.Degraded, // Not critic
+                            tags: ["ready"],
                             timeout: TimeSpan.FromSeconds(5));
         return services;
     }
