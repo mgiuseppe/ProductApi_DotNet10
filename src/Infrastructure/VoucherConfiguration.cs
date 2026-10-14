@@ -13,7 +13,7 @@ internal class VoucherConfiguration : IEntityTypeConfiguration<Voucher>
         builder.Property(o => o.Amount).HasPrecision(18, 2);
 
         builder.ToTable(t => {
-            t.HasCheckConstraint("CK_Vouchers_Amount_Positive", "Amount > 0");
+            t.HasCheckConstraint("CK_Vouchers_Amount_Positive", "amount > 0");
         });
     }
 }

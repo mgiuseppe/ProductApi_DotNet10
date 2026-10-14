@@ -1,35 +1,27 @@
 using Domain;
 using Domain.Orders;
 using Domain.Vouchers;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Tests;
 
-public class VoucherRepositoryTests : IDisposable
+public class VoucherRepositoryTests : IAsyncLifetime
 {
     private static readonly DateTime Start = new(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime End = new(2026, 10, 31, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTime Within = new(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc);
 
-    private readonly SqliteConnection _connection;
-    private readonly DbContextOptions<AppDbContext> _options;
+    private TestDatabase _database = null!;
+    private DbContextOptions<AppDbContext> _options = null!;
 
-    public VoucherRepositoryTests()
+    public async Task InitializeAsync()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open(); // in-memory database exsists until the connection is open
-
-        _options = new DbContextOptionsBuilder<AppDbContext>()
-                                        .UseSqlite(_connection)
-                                        .Options;
-
-        using var db = new AppDbContext(_options);
-        db.Database.Migrate(); // create model tables
+        _database = await TestDatabase.CreateAsync(); // own database, migrations already applied
+        _options = _database.Options();
     }
 
     private AppDbContext NewContext() => new(_options);
-    public void Dispose() => _connection.Dispose();
+    public Task DisposeAsync() => _database.DisposeAsync().AsTask();
 
     private async Task SeedAsync(params object[] entities)
     {

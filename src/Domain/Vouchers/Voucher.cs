@@ -17,6 +17,8 @@ public class Voucher
 
     public static Voucher Create(DateTime validityStartDate, DateTime validityEndDate, decimal discountAmount)
     {
+        validityStartDate = AsUtc(validityStartDate);
+        validityEndDate = AsUtc(validityEndDate);
         if (validityStartDate >= validityEndDate)
             throw new DomainException("Validity start date must be before validity end date");
         if (discountAmount <= 0)
@@ -50,6 +52,14 @@ public class Voucher
     }
 
     #region private helpers
+    // Dates are always UTC (Redeem/Cancel receive the UTC clock). A date without offset (e.g. JSON "2026-10-20") is assumed UTC.
+    private static DateTime AsUtc(DateTime date) => date.Kind switch
+    {
+        DateTimeKind.Local => date.ToUniversalTime(),
+        DateTimeKind.Unspecified => DateTime.SpecifyKind(date, DateTimeKind.Utc),
+        _ => date
+    };
+
     private void ValidateIsNotRedeemed()
     {
         if (RedeemedOn != null)

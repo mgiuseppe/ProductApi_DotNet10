@@ -17,5 +17,7 @@ dotnet ef database update --project src/Infrastructure --startup-project src/Api
 
 ## Persistence
 - Migrations are not forward-only, in production it would be a safe practice.
-- SQLite stores `decimal` as text: check constraints on amounts are unreliable, and filtering or ordering by amount is not supported. To be revisited with Postgres.
+- Postgres (Npgsql) with snake_case names (`EFCore.NamingConventions`): raw SQL such as check constraints must use the snake_case column names (`discount_amount >= 0`).
+- `decimal` is `numeric(18,2)`, `Guid` is `uuid`, `DateTime` is `timestamptz`: Npgsql rejects a non-UTC `DateTime`, so the domain normalizes incoming dates to UTC (`Voucher.Create`). Postgres keeps microseconds, not 100ns ticks.
+- Unique violations (SqlState 23505, e.g. the same voucher redeemed by two orders concurrently) become a `ConflictException` (409) in `AppDbContext.SaveChangesAsync`.
 - Ids are generated in the domain (`ValueGeneratedNever`).

@@ -26,7 +26,7 @@ public static class DependencyInjection
         services.AddScoped<DispatchDomainEventsInterceptor>();
 
         services.AddDbContext<AppDbContext>((sp, options) => 
-                        options.UseSqlite(csEF)
+                        options.UseAppDatabase(csEF)
                                .AddInterceptors(sp.GetRequiredService<DispatchDomainEventsInterceptor>()));
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IQueryContext>(sp => sp.GetRequiredService<AppDbContext>());
@@ -59,6 +59,15 @@ public static class DependencyInjection
                             tags: ["ready"],
                             timeout: TimeSpan.FromSeconds(5));
         return services;
+    }
+
+    // Shared with the integration tests, so they build the same model (provider + naming convention) as the app
+    internal static TBuilder UseAppDatabase<TBuilder>(this TBuilder options, string connectionString)
+        where TBuilder : DbContextOptionsBuilder
+    {
+        options.UseNpgsql(connectionString)
+               .UseSnakeCaseNamingConvention(); // order_lines.unit_price_snapshot: no quoting needed in raw SQL
+        return options;
     }
 
     public static async Task InitializeInfrastructureAsync(this IServiceProvider services)

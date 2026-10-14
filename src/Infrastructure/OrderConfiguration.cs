@@ -33,7 +33,7 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Ignore(o => o.SubTotal); 
         builder.Ignore(o => o.Total); 
 
-        builder.ToTable(t => t.HasCheckConstraint("CK_Orders_DiscountAmount_NonNegative", "DiscountAmount >= 0"));
+        builder.ToTable(t => t.HasCheckConstraint("CK_Orders_DiscountAmount_NonNegative", "discount_amount >= 0"));
     }
 }
 
@@ -41,6 +41,7 @@ internal class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
 {
     public void Configure(EntityTypeBuilder<OrderLine> builder)
     {
+        builder.ToTable("order_lines"); // no DbSet for OrderLine: without this EF would name it after the class (order_line)
         builder.HasKey(l => l.Id);
         builder.Property(o => o.Id).ValueGeneratedNever(); // Useful because I generate the Guid in the app and not on DB, Otherwise EF could try to update an non-existant item on the db, this happens with sub-aggregates like OrderLine
         builder.Property(l => l.UnitPriceSnapshot).HasPrecision(18, 2);
@@ -48,7 +49,7 @@ internal class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
         builder.Property(l => l.Quantity);
         builder.Ignore(l => l.TotalPriceSnapshot); // Computed
 
-        builder.ToTable(t => t.HasCheckConstraint("CK_OrderLines_UnitPriceSnapshot_NonNegative", "UnitPriceSnapshot >= 0"));
-        builder.ToTable(t => t.HasCheckConstraint("CK_OrderLines_Quantity_Positive", "Quantity > 0"));
+        builder.ToTable(t => t.HasCheckConstraint("CK_OrderLines_UnitPriceSnapshot_NonNegative", "unit_price_snapshot >= 0"));
+        builder.ToTable(t => t.HasCheckConstraint("CK_OrderLines_Quantity_Positive", "quantity > 0"));
     }
 }

@@ -4,11 +4,15 @@ This solution contains a product / catalog manager sample api implemented to ref
 
 ## How To Run
 
-1. Apply migrations
+1. Start Postgres and MongoDB
+    ```bash
+    docker run -d --name productapi-postgres -p 5432:5432 -e POSTGRES_USER=productapi -e POSTGRES_PASSWORD=productapi -e POSTGRES_DB=productapi -v productapi-pgdata:/var/lib/postgresql postgres:18
+    docker run -d --name mongo -p 27017:27017 mongo
+    ```
+2. Apply migrations (connection string `DbConnection` in `src/Api/appsettings.Development.json`)
     ```bash
     dotnet ef database update --project src/Infrastructure --startup-project src/Api
     ```
-2. docker run -d --name mongo -p 27017:27017 mongo
 3. Run src/Api
 
 4. (optional) Observability: 
@@ -40,6 +44,8 @@ See [Clean Architecture](docs/CleanArchitecture.md)
 See [DomainEventsHandling](docs/DomainEventsHAndling.md)
 
 ## Testing Strategy
+
+Infrastructure.Tests start a Postgres container with Testcontainers: Docker must be running.
 
 See [Testing Strategy](docs/TestingStrategy.md)
 

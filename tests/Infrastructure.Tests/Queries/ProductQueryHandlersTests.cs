@@ -1,6 +1,5 @@
 using Application.Products;
 using Domain.Products;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Tests.Queries;
@@ -8,26 +7,19 @@ namespace Infrastructure.Tests.Queries;
 // These tests live in Infrastructure.Tests (not Application.Tests) because 
 // query handlers depend on the real AppDbContext (internal to Infrastructure) 
 // to verify EF's actual SQL translation — see README § Testing strategy.
-public class ProductQueryHandlersTests : IDisposable
+public class ProductQueryHandlersTests : IAsyncLifetime
 {
-    private readonly SqliteConnection _connection;
-    private readonly DbContextOptions<AppDbContext> _options;
+    private TestDatabase _database = null!;
+    private DbContextOptions<AppDbContext> _options = null!;
 
-    public ProductQueryHandlersTests()
+    public async Task InitializeAsync()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open(); // in-memory database exsists until the connection is open
-
-        _options = new DbContextOptionsBuilder<AppDbContext>()
-                                        .UseSqlite(_connection)
-                                        .Options;
-
-        using var db = new AppDbContext(_options);
-        db.Database.Migrate(); // create model tables
+        _database = await TestDatabase.CreateAsync(); // own database, migrations already applied
+        _options = _database.Options();
     }
 
     private AppDbContext NewContext() => new(_options);
-    public void Dispose() => _connection.Dispose();
+    public Task DisposeAsync() => _database.DisposeAsync().AsTask();
 
     private async Task SeedAsync(params Product[] products)
     {

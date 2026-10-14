@@ -2,31 +2,23 @@ using Application.Common.Exceptions;
 using Domain;
 using Domain.Orders;
 using Domain.Vouchers;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Tests;
 
-public class OrderRepositoryTests : IDisposable
+public class OrderRepositoryTests : IAsyncLifetime
 {
-    private readonly SqliteConnection _connection;
-    private readonly DbContextOptions<AppDbContext> _options;
+    private TestDatabase _database = null!;
+    private DbContextOptions<AppDbContext> _options = null!;
 
-    public OrderRepositoryTests()
+    public async Task InitializeAsync()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open(); // in-memory database exsists until the connection is open
-
-        _options = new DbContextOptionsBuilder<AppDbContext>()
-                                        .UseSqlite(_connection)
-                                        .Options;
-
-        using var db = new AppDbContext(_options);
-        db.Database.Migrate(); // create model tables
+        _database = await TestDatabase.CreateAsync(); // own database, migrations already applied
+        _options = _database.Options();
     }
 
     private AppDbContext NewContext() => new(_options);
-    public void Dispose() => _connection.Dispose();
+    public Task DisposeAsync() => _database.DisposeAsync().AsTask();
 
     // Integration Test
     [Fact]
@@ -95,7 +87,7 @@ public class OrderRepositoryTests : IDisposable
     [Fact]
     public async Task Update_ConfirmWithVoucher_PersistsVoucherIdAndDiscount()
     {
-        var now = DateTime.UtcNow;
+        var now = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc); // fixed: Postgres keeps microseconds, DateTime.UtcNow has 100ns ticks and would not round-trip
         var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 9.90m);
         var order = Order.Create().AddLine(Guid.NewGuid(), "Keyboard", 49.90m, 1);
 

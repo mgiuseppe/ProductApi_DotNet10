@@ -2,33 +2,27 @@ using Domain.Common;
 using Domain.Orders;
 using Infrastructure.Interceptors;
 using MediatR;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
 namespace Infrastructure.Tests.Interceptors;
 
-public class DispatchDomainEventsInterceptorTests : IDisposable
+public class DispatchDomainEventsInterceptorTests : IAsyncLifetime
 {
-    private readonly SqliteConnection _connection;
+    private TestDatabase _database = null!;
     private readonly Mock<IMediator> _mediator = new();
     private readonly List<BaseDomainEvent> _published = [];
 
     public DispatchDomainEventsInterceptorTests()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open(); // in-memory database exsists until the connection is open
-
-        using var db = NewContext();
-        db.Database.Migrate(); // create model tables
-
         _mediator
             .Setup(m => m.Publish(It.IsAny<BaseDomainEvent>(), It.IsAny<CancellationToken>()))
             .Callback<BaseDomainEvent, CancellationToken>((e, _) => _published.Add(e))
             .Returns(Task.CompletedTask);
     }
 
-    public void Dispose() => _connection.Dispose();
+    public async Task InitializeAsync() => _database = await TestDatabase.CreateAsync(); // own database, migrations already applied
+    public Task DisposeAsync() => _database.DisposeAsync().AsTask();
 
     // Integration Test
     [Fact]
@@ -177,10 +171,9 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
     public async Task SaveChangesAsync_WhenSaveFails_EventsAreAlreadyPublished()
     {
         // Published before the commit: a failed save does not undo what the handlers did
-        using var emptyDb = new SqliteConnection("DataSource=:memory:"); // no tables: the save fails
-        emptyDb.Open();
+        await using var emptyDb = await TestDatabase.CreateAsync(migrated: false); // no tables: the save fails
         var options = new DbContextOptionsBuilder<AppDbContext>()
-                            .UseSqlite(emptyDb)
+                            .UseAppDatabase(emptyDb.ConnectionString)
                             .AddInterceptors(NewInterceptor())
                             .Options;
         var order = NewConfirmedOrder();
@@ -293,7 +286,7 @@ public class DispatchDomainEventsInterceptorTests : IDisposable
 
     private DbContextOptions<AppDbContext> NewOptions(bool withInterceptor = true)
     {
-        var builder = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(_connection);
+        var builder = new DbContextOptionsBuilder<AppDbContext>().UseAppDatabase(_database.ConnectionString);
         if (withInterceptor)
             builder.AddInterceptors(NewInterceptor());
         return builder.Options;

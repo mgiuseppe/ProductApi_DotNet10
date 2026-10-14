@@ -14,6 +14,6 @@ internal class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(p => p.Price).HasPrecision(18, 2);
         builder.Property(p => p.Description).HasMaxLength(Product.DescriptionMaxLength);
 
-        builder.ToTable(t => t.HasCheckConstraint("CK_Products_Price_NonNegative", "Price >= 0"));
+        builder.ToTable(t => t.HasCheckConstraint("CK_Products_Price_NonNegative", "price >= 0"));
     }
 }

@@ -35,6 +35,28 @@ public class VoucherTests
         Assert.Throws<DomainException>(() => Voucher.Create(End, Start, 10m));
     }
 
+    [Fact]
+    public void Create_WithUnspecifiedKind_AssumesUtc()
+    {
+        var v = Voucher.Create(new DateTime(2026, 10, 1), new DateTime(2026, 10, 31), 10m);
+
+        Assert.Equal(DateTimeKind.Utc, v.ValidityStartDate.Kind);
+        Assert.Equal(Start, v.ValidityStartDate);
+        Assert.Equal(DateTimeKind.Utc, v.ValidityEndDate.Kind);
+        Assert.Equal(End, v.ValidityEndDate);
+    }
+
+    [Fact]
+    public void Create_WithLocalKind_ConvertsToUtc()
+    {
+        var localStart = Start.ToLocalTime();
+
+        var v = Voucher.Create(localStart, End, 10m);
+
+        Assert.Equal(DateTimeKind.Utc, v.ValidityStartDate.Kind);
+        Assert.Equal(Start, v.ValidityStartDate);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
