@@ -1,4 +1,5 @@
 using Application.Common.Interfaces;
+using Infrastructure.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +24,11 @@ public static class DependencyInjection
         if(string.IsNullOrEmpty(csEF))
             throw new InvalidOperationException($"Connection string '{EFConnectionStringName}' cannot be empty");   
 
-        services.AddDbContext<AppDbContext>(options => options.UseSqlite(csEF));
+        services.AddScoped<DispatchDomainEventsInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) => 
+                        options.UseSqlite(csEF)
+                               .AddInterceptors(sp.GetRequiredService<DispatchDomainEventsInterceptor>()));
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IQueryContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IProductRepository, ProductRepository>();

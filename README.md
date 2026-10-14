@@ -30,6 +30,15 @@ ClaudeCode:
 
 See [Clean Architecture](docs/CleanArchitecture.md)
 
+## CQRS and MediatR
+- MediatR was introduced to practice the pattern. With this scope (few aggregates, one consumer) a basic service layer would need less code than commands. Its concrete advantage is pipeline behaviors.
+- `Behaviors/` contains a commented-out `UnitOfWorkBehavior` for reference, not registered: it would make the commit implicit and invisible from the handlers.
+- Query handlers read through `IQueryContext` (EF Core `DbSet`s) and bypass repositories, because a read does not need to protect invariants. As a consequence, Application references the EF Core package (never the Infrastructure project).
+- Query handler tests live in `Infrastructure.Tests`: they need a real `AppDbContext` to verify the SQL translation, and the context is internal to Infrastructure.
+- Each endpoint translates `NotFoundException`, `DomainException` and `ConflictException` with its own try/catch. A global `IExceptionHandler` would centralize it.
+
+See [DomainEventsHandling](docs/DomainEventsHAndling.md)
+
 ## Testing Strategy
 
 See [Testing Strategy](docs/TestingStrategy.md)
@@ -49,13 +58,6 @@ See [Observability](docs/Observability.md)
 ## Domain Simplifications
 
 See [Domain Simplifications](docs/DomainSimplifications.md)
-
-## CQRS and MediatR
-- MediatR was introduced to practice the pattern. With this scope (few aggregates, one consumer) a basic service layer would need less code than commands. Its concrete advantage is pipeline behaviors.
-- `Behaviors/` contains a commented-out `UnitOfWorkBehavior` for reference, not registered: it would make the commit implicit and invisible from the handlers.
-- Query handlers read through `IQueryContext` (EF Core `DbSet`s) and bypass repositories, because a read does not need to protect invariants. As a consequence, Application references the EF Core package (never the Infrastructure project).
-- Query handler tests live in `Infrastructure.Tests`: they need a real `AppDbContext` to verify the SQL translation, and the context is internal to Infrastructure.
-- Each endpoint translates `NotFoundException`, `DomainException` and `ConflictException` with its own try/catch. A global `IExceptionHandler` would centralize it.
 
 ## TODO 
 - autoformat before commit

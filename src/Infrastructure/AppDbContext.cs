@@ -5,6 +5,7 @@ using Domain.Products;
 using Domain.Vouchers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Domain.Common;
 
 namespace Infrastructure;
 
@@ -25,6 +26,13 @@ internal class AppDbContext : DbContext, IUnitOfWork, IQueryContext
         // Needed to automatically retrieve configuration classes in the same assembly
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Configure ignore for the property DomainEvents on each entity that inherit from BaseAggregateRoot
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes()
+                 .Where(t => typeof(BaseAggregateRoot).IsAssignableFrom(t.ClrType)))
+        {
+            modelBuilder.Entity(entityType.ClrType).Ignore(nameof(BaseAggregateRoot.DomainEvents));
+        }
     }
 
     /// <summary>

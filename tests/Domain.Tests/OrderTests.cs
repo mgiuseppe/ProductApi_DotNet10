@@ -1,6 +1,7 @@
 using Domain.Exceptions;
 using Domain.Orders;
 using Domain.Products;
+using Domain.Vouchers;
 
 namespace Domain.Tests;
 
@@ -170,6 +171,90 @@ public class OrderTests
         var o = Order.Create();
         Assert.Throws<DomainException>(() => o.Confirm());
         Assert.Equal(OrderStatus.Draft, o.Status);
+    }
+
+    [Fact]
+    public void Create_HasNoDomainEvents()
+    {
+        var o = CreateOrderWithLine();
+        Assert.Empty(o.DomainEvents);
+    }
+
+    [Fact]
+    public void Confirm_WithoutVoucher_RaisesConfirmedEventWithSnapshot()
+    {
+        var o = CreateOrderWithLine();
+
+        o.Confirm();
+
+        var e = Assert.IsType<OrderConfirmedDomainEvent>(Assert.Single(o.DomainEvents));
+        Assert.Equal(o.Id, e.OrderId);
+        Assert.Equal(20m, e.Total);
+        Assert.Null(e.VoucherId);
+        Assert.NotEqual(Guid.Empty, e.EventId);
+    }
+
+    [Fact]
+    public void Confirm_WithVoucher_RaisesConfirmedEventWithDiscountedTotalAndVoucher()
+    {
+        var now = new DateTime(2026, 10, 15, 0, 0, 0, DateTimeKind.Utc);
+        var o = CreateOrderWithLine();
+        var v = Voucher.Create(now.AddDays(-1), now.AddDays(1), 5m);
+
+        new VoucherRedemptionService().ConfirmWithVoucher(o, v, now);
+
+        var e = Assert.IsType<OrderConfirmedDomainEvent>(Assert.Single(o.DomainEvents));
+        Assert.Equal(15m, e.Total);
+        Assert.Equal(v.Id, e.VoucherId);
+    }
+
+    [Fact]
+    public void Confirm_WhenThrows_RaisesNoEvent()
+    {
+        var o = Order.Create();
+        Assert.Throws<DomainException>(() => o.Confirm());
+        Assert.Empty(o.DomainEvents);
+    }
+
+    [Fact]
+    public void Cancel_RaisesCanceledEvent()
+    {
+        var o = CreateOrderInStatus(OrderStatus.Confirmed);
+        o.ClearDomainEvents();
+
+        o.Cancel();
+
+        var e = Assert.IsType<OrderCanceledDomainEvent>(Assert.Single(o.DomainEvents));
+        Assert.Equal(o.Id, e.OrderId);
+    }
+
+    [Fact]
+    public void Ship_RaisesNoEvent()
+    {
+        var o = CreateOrderInStatus(OrderStatus.Confirmed);
+        o.ClearDomainEvents();
+
+        o.Ship();
+
+        Assert.Empty(o.DomainEvents);
+    }
+
+    [Fact]
+    public void ClearDomainEvents_RemovesCollectedEvents()
+    {
+        var o = CreateOrderInStatus(OrderStatus.Cancelled);
+        Assert.Equal(2, o.DomainEvents.Count);
+
+        o.ClearDomainEvents();
+
+        Assert.Empty(o.DomainEvents);
+    }
+
+    [Fact]
+    public void DomainEvents_HaveDistinctEventIds()
+    {
+        var o = CreateOrderInStatus(OrderStatus.Cancelled);
+        Assert.Equal(2, o.DomainEvents.Select(e => e.EventId).Distinct().Count());
     }
 
     [Theory]

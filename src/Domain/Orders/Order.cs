@@ -1,3 +1,4 @@
+using Domain.Common;
 using Domain.Exceptions;
 using Domain.Vouchers;
 
@@ -13,7 +14,7 @@ namespace Domain.Orders;
 /// - No edits on shipped or canceled rows
 /// - Draft orders cannot be canceled because they should be deleted
 /// </summary>
-public class Order
+public class Order : BaseAggregateRoot
 {
     private readonly List<OrderLine> _lines = [];
 
@@ -83,6 +84,8 @@ public class Order
         }
 
         Status = OrderStatus.Confirmed;
+
+        AddDomainEvent(new OrderConfirmedDomainEvent(Id, Total, VoucherId));
     }
 
     public void Ship()
@@ -98,6 +101,8 @@ public class Order
         ValidateChangeStatus(OrderStatus.Cancelled);
 
         Status = OrderStatus.Cancelled;
+
+        AddDomainEvent(new OrderCanceledDomainEvent(Id));
     }
 
     #region private helpers
