@@ -1,6 +1,10 @@
+using Application.Common.Exceptions;
+using Application.Common.Interfaces;
 using Application.Orders;
 using Domain.Orders;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
+using Moq;
 
 namespace Infrastructure.Tests.Queries;
 
@@ -17,6 +21,9 @@ public class OrderQueryHandlersTests : IAsyncLifetime
         _database = await TestDatabase.CreateAsync(); // own database, migrations already applied
         _options = _database.Options();
     }
+
+    private readonly Mock<IOrderHistoryLog> _history = new();
+    private readonly Mock<IChatClient> _chat = new();
 
     private AppDbContext NewContext() => new(_options);
     public Task DisposeAsync() => _database.DisposeAsync().AsTask();
@@ -82,5 +89,52 @@ public class OrderQueryHandlersTests : IAsyncLifetime
         // Ids are random, so we only check that pages don't overlap and together cover every order
         var listedIds = firstPage.Concat(secondPage).Select(o => o.Id).ToList();
         Assert.Equal(orders.Select(o => o.Id).Order(), listedIds.Order());
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task SummarizeOrder_WithExistingId_SendsOrderAndHistoryToChatClient()
+    {
+        var order = Order.Create().AddLine(Guid.NewGuid(), "Keyboard", 49.90m, 2);
+        await SeedAsync(order);
+        var confirmed = new OrderConfirmedEntry(Guid.NewGuid(), order.Id, new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc), 99.80m, null);
+        _history.Setup(h => h.GetByOrderIdAsync(order.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([confirmed]);
+        List<ChatMessage>? sent = null;
+        ChatOptions? sentOptions = null;
+        _chat.Setup(c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()))
+             .Callback<IEnumerable<ChatMessage>, ChatOptions?, CancellationToken>((m, o, _) => (sent, sentOptions) = (m.ToList(), o))
+             .ReturnsAsync(new ChatResponse(new ChatMessage(ChatRole.Assistant, "The summary")));
+
+        await using var db = NewContext();
+        var result = await new SummarizeOrderQueryHandler(db, _history.Object, _chat.Object)
+                               .Handle(new SummarizeOrderQuery(order.Id), CancellationToken.None);
+
+        Assert.Equal("The summary", result);
+        Assert.NotNull(sent);
+        Assert.Collection(sent,
+            m => Assert.Equal(ChatRole.System, m.Role),
+            m => Assert.Equal(ChatRole.User, m.Role));
+        var userPrompt = sent[1].Text;
+        Assert.Contains(order.Id.ToString(), userPrompt);
+        Assert.Contains("Keyboard", userPrompt);
+        Assert.Contains("\"Draft\"", userPrompt); // enums serialized as names, not numbers
+        Assert.Contains(nameof(OrderConfirmedEntry), userPrompt); // entry type tells the model what happened
+        Assert.Contains(confirmed.Id.ToString(), userPrompt);
+        Assert.NotNull(sentOptions);
+        Assert.Equal(500, sentOptions.MaxOutputTokens);
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task SummarizeOrder_WithNonExistingId_ThrowsNotFound()
+    {
+        await using var db = NewContext();
+        var sut = new SummarizeOrderQueryHandler(db, _history.Object, _chat.Object);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => sut.Handle(new SummarizeOrderQuery(Guid.NewGuid()), CancellationToken.None));
+
+        _chat.Verify(c => c.GetResponseAsync(It.IsAny<IEnumerable<ChatMessage>>(), It.IsAny<ChatOptions?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

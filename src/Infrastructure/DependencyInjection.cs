@@ -1,11 +1,13 @@
 using Application.Common.Interfaces;
 using Infrastructure.Interceptors;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using MongoDB.Driver.Core.Configuration;
+using OpenAI;
 
 namespace Infrastructure;
 
@@ -18,13 +20,28 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services, IConfiguration configuration)
     {
-        // EF
+        AddEntityFrameworkAndRepositories(services, configuration);
+        AddMongo(services, configuration);
+        AddAI(services, configuration);
+
+        // Health Checks
+        services.AddHealthChecks()
+                .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
+                .AddMongoDb(dbFactory: sp => sp.GetRequiredService<IMongoDatabase>(),
+                            name: "mongodb",
+                            tags: ["ready"],
+                            timeout: TimeSpan.FromSeconds(5));
+
+        return services;
+    }
+
+    private static void AddEntityFrameworkAndRepositories(IServiceCollection services, IConfiguration configuration)
+    {
         var csEF = configuration.GetConnectionString(EFConnectionStringName);
         if (string.IsNullOrEmpty(csEF))
             throw new InvalidOperationException($"Connection string '{EFConnectionStringName}' cannot be empty");
 
         services.AddScoped<DispatchDomainEventsInterceptor>();
-
         services.AddDbContext<AppDbContext>((sp, options) =>
                         options.UseAppDatabase(csEF)
                                .AddInterceptors(sp.GetRequiredService<DispatchDomainEventsInterceptor>()));
@@ -33,8 +50,10 @@ public static class DependencyInjection
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IVoucherRepository, VoucherRepository>();
+    }
 
-        // MONGO (MongoClient is thread safe and it is suggested to be injected as singleton)
+    private static void AddMongo(IServiceCollection services, IConfiguration configuration)
+    {
         var csMongo = configuration.GetConnectionString(MongoConnectionStringName);
         if (string.IsNullOrEmpty(csMongo))
             throw new InvalidOperationException($"Connection string '{MongoConnectionStringName}' cannot be empty");
@@ -50,15 +69,16 @@ public static class DependencyInjection
         services.AddSingleton<IMongoDatabase>(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(mongoUrl.DatabaseName ?? "productapi"));
         services.AddSingleton<IOrderHistoryLog, OrderHistoryLog>();
         OrderHistoryEntriesConfiguration.Register();
+    }
 
-        // Health Checks
-        services.AddHealthChecks()
-                .AddDbContextCheck<AppDbContext>("database", tags: ["ready"])
-                .AddMongoDb(dbFactory: sp => sp.GetRequiredService<IMongoDatabase>(),
-                            name: "mongodb",
-                            tags: ["ready"],
-                            timeout: TimeSpan.FromSeconds(5));
-        return services;
+    private static void AddAI(IServiceCollection services, IConfiguration configuration)
+    {
+        var openAIConfig = configuration.GetSection("OpenAI");
+        // Built on first use: OpenAIClient throws without a key, and hosts that never chat (e.g. the migrator bundle) don't have one
+        services.AddChatClient(_ => new OpenAIClient(openAIConfig["ApiKey"])
+                                        .GetChatClient(openAIConfig["Model"])
+                                        .AsIChatClient())
+                .UseOpenTelemetry(sourceName: AITelemetry.SourceName);
     }
 
     // Shared with the integration tests, so they build the same model (provider + naming convention) as the app
@@ -70,6 +90,11 @@ public static class DependencyInjection
         return options;
     }
 
+    /// <summary>
+    /// Initialize MongoDB indexes
+    /// </summary>
+    /// <param name="services"></param>
+    /// <returns></returns>
     public static async Task InitializeInfrastructureAsync(this IServiceProvider services)
     {
         var database = services.GetRequiredService<IMongoDatabase>();

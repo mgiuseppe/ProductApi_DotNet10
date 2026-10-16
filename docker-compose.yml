@@ -69,6 +69,7 @@ services:
       <<: *connection-strings
       ASPNETCORE_ENVIRONMENT: Development # exposes /openapi/v1.json
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:18889"
+      OpenAI__ApiKey: "${OPENAI_API_KEY:-}" # from .env: user-secrets are not available in the container
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

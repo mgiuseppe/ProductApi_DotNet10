@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization.Metadata;
 using Application.Orders;
+using Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MongoDB.Driver;
@@ -32,12 +33,14 @@ public static class DependencyInjection
                 .AddHttpClientInstrumentation()
                 .AddEntityFrameworkCoreInstrumentation()
                 // The MongoDB driver (3.x) emits its own spans natively: subscribing to its source is enough
-                .AddSource(MongoTelemetry.ActivitySourceName))
+                .AddSource(MongoTelemetry.ActivitySourceName)
+                .AddSource(AITelemetry.SourceName))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
                 .AddMeter(OrderMetrics.MeterName)
-                .AddRuntimeInstrumentation())
+                .AddMeter(AITelemetry.SourceName) // GenAI token usage and call duration
+            .AddRuntimeInstrumentation())
             .WithLogging(
                 logging => { },
                 options =>

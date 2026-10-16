@@ -160,3 +160,8 @@ DELETE {{Api_HostAddress}}/orders/{{createEmptyOrder.response.body.$.id}}
 
 ### History of an order
 GET {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}/history
+
+### === AI ===
+
+### Summarize History of an order
+GET {{Api_HostAddress}}/orders/{{createOrder.response.body.$.id}}/summary

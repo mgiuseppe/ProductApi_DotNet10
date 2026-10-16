@@ -42,6 +42,8 @@ docker compose --profile app up --build -d
 Host ports default to the ones above. To change them, copy `.env.example` to `.env` (gitignored) and edit it: Compose reads it automatically.
 If you change `POSTGRES_PORT`, `MONGO_PORT` or `OTLP_PORT`, update `src/Api/appsettings.Development.json` as well, otherwise the F5 API won't find them.
 
+The order summary (`GET /orders/{id}/summary`) calls OpenAI. With F5 the key comes from user-secrets (`dotnet user-secrets set "OpenAI:ApiKey" "<key>" --project src/Api`); the containerized API can't see user-secrets, so set `OPENAI_API_KEY` in `.env`. Without a key everything else still works and only the summary endpoint fails.
+
 ### Stop / reset
 
 ```bash
@@ -90,6 +92,14 @@ See [EFCore](docs/EFCore.md)
 - Health checks: `/alive` (liveness) and `/health` (readiness, includes the database), excluded from tracing
 
 See [Observability](docs/Observability.md)
+
+## AI
+
+- `GET /orders/{id}/summary`: an LLM summary of an order and its history, for support operators
+- `IChatClient` (Microsoft.Extensions.AI) with OpenAI; the API key comes from user-secrets (F5) or `.env` (Docker)
+- LLM calls traced with OpenTelemetry (GenAI conventions, no prompt contents)
+
+See [AI](docs/AI.md)
 
 ## Domain Simplifications
 

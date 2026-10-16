@@ -1,9 +1,5 @@
 using Api.Requests;
-using Application;
-using Application.Common.Exceptions;
 using Application.Orders;
-using Application.Responses;
-using Domain.Exceptions;
 using MediatR;
 
 namespace Api.Endpoints;
@@ -30,6 +26,12 @@ public static class OrderEndpoints
         app.MapGet("/orders/{id:guid}/history", async (Guid id, IMediator mediator, CancellationToken ct) =>
         {
             var o = await mediator.Send(new GetOrderHistoryQuery(id), ct);
+            return Results.Ok(o);
+        });
+
+        app.MapGet("/orders/{id:guid}/summary", async (Guid id, IMediator mediator, CancellationToken ct) =>
+        {
+            var o = await mediator.Send(new SummarizeOrderQuery(id), ct);
             return Results.Ok(o);
         });
 

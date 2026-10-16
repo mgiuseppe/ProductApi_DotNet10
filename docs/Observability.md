@@ -7,7 +7,7 @@ The API exposes three kinds of signals:
 ## Instrumenting
 `Api` registers OpenTelemetry with automatic instrumentation, no custom spans:
 - traces: incoming ASP.NET Core requests, outgoing `HttpClient` calls and EF Core queries
-- metrics: ASP.NET Core, `HttpClient`, .NET runtime (GC, thread pool, exceptions) and the custom `ProductApi.Orders` meter (see [Custom metrics](#custom-metrics))
+- metrics: ASP.NET Core, `HttpClient`, .NET runtime (GC, thread pool, exceptions) the custom `ProductApi.Orders` meter (see [Custom metrics](#custom-metrics)) and the GenAI metrics of the chat client (see [AI](AI.md#observability))
 
 EF Core does not create spans by itself: they come from the `OpenTelemetry.Instrumentation.EntityFrameworkCore` package (still prerelease), registered with `AddEntityFrameworkCoreInstrumentation()`. Each query becomes a child span of the request, with the SQL text.
 
