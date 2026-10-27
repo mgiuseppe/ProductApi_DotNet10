@@ -1,0 +1,5 @@
+root = true
+
+# Must match .gitattributes: without it dotnet format expects the OS default (CRLF on Windows)
+[*]
+end_of_line = lf

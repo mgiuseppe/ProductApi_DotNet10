@@ -1,0 +1,21 @@
+# Line endings: LF in the repository and in the working tree on every OS.
+# Overrides core.autocrlf, so Windows and Linux (Docker, CI) see the same bytes
+# and files no longer show up as modified only because of CRLF/LF.
+* text=auto eol=lf
+
+# Windows-only scripts need CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files: never touch them
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.dll binary
+*.exe binary
+*.snk binary
