@@ -28,7 +28,9 @@ A push to a feature branch is never rejected: the checks run afterwards and bloc
 
 ## 2. Pull request pipeline (CI)
  
-Branch protection on `main`: no direct pushes, at least one review, required checks green, squash merge.
+Ruleset on `main` ([ADR-0011](adr/0011-github-flow.md)): no direct pushes, no force pushes, no bypass, required checks green, squash merge only ([ADR-0012](adr/0012-squash-merge-only.md)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
+
+The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in the README, section "One-time repository setup".
  
 | # | Check | Notes |
 |---|---|---|

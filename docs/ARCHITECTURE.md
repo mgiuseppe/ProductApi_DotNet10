@@ -127,3 +127,5 @@ See [ADR-0008](adr/0008-integration-tests-with-testcontainers.md) and [TestingSt
 | [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers |
 | [0009](adr/0009-migrations-with-migrator-container.md) | Migrations applied by a dedicated migrator container |
 | [0010](adr/0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after |
+| [0011](adr/0011-github-flow.md) | GitHub Flow with a protected `main` |
+| [0012](adr/0012-squash-merge-only.md) | Squash merge only |
