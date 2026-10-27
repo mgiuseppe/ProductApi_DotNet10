@@ -126,3 +126,4 @@ See [ADR-0008](adr/0008-integration-tests-with-testcontainers.md) and [TestingSt
 | [0007](adr/0007-ichatclient-without-own-port.md) | `IChatClient` used directly, no port of our own |
 | [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers |
 | [0009](adr/0009-migrations-with-migrator-container.md) | Migrations applied by a dedicated migrator container |
+| [0010](adr/0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after |

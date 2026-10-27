@@ -15,7 +15,11 @@ The gate described in `docs/CICD.md`, run locally so that what passes here passe
 4. **Unit tests**: `dotnet test tests/Domain.Tests` and `dotnet test tests/Application.Tests`.
 5. **Integration tests** (always before a push, before a commit when Infrastructure or a query handler changed): check Docker with `docker info`; if it is not running, ask the user to start Docker Desktop instead of skipping. Then `dotnet test tests/Infrastructure.Tests`.
 6. **Commit**: stage only the files that belong to the change (no `bin/`, `obj/`, `.env`, secrets). Message: short imperative subject, then a body with the why when it is not obvious. Show the message before committing.
-7. **Push**: only if the user asked for it in this request. Report branch and result.
+7. **Migration checks** (before every push; rules in `docs/EFCore.md`, section Migrations). Run `git fetch origin` first.
+   - **Shared migrations untouched** (blocks): `git diff --name-status origin/main...HEAD -- src/Infrastructure/Migrations/` must show only `A` (added) files, plus `M` on `AppDbContextModelSnapshot.cs`. Any other `M`, `D` or `R` means a pushed migration was edited: stop and explain that the fix is a new migration.
+   - **No forgotten migration** (blocks): `dotnet ef migrations has-pending-model-changes --project src/Infrastructure --startup-project src/Api` must report no changes.
+   - **Changes that need attention** (information only, never blocks): in the migrations added since `origin/main` (excluding `*.Designer.cs`), search for `DropColumn`, `DropTable`, `RenameColumn`, `RenameTable`, `AlterColumn`, `unique: true`, `AddUniqueConstraint`, `AddForeignKey`, `AddCheckConstraint`, `migrationBuilder.Sql`, `AddColumn` with `nullable: false`, `CreateIndex` on an existing table. Also flag changes to `OrderHistoryEntriesConfiguration.cs` or `OrderHistoryEntries.cs` (MongoDB document shape). For each hit, quote the line and the risk from the table in `docs/EFCore.md` in the report. Point out explicitly a `DropColumn` + `AddColumn` pair on the same table, which usually means a rename scaffolded with data loss. This project does not require expand/contract (ADR-0010): do not ask for confirmation.
+8. **Push**: only if the user asked for it in this request. Report branch and result.
 
 ## Report
 

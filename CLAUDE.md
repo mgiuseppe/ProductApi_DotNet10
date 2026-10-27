@@ -48,5 +48,5 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 - Before every commit run the format gate and the unit tests; before every push also `Infrastructure.Tests`. Use the `/verify-and-commit` skill. Do not commit if anything fails, and do not skip checks with `--no-verify`.
 - A change to layers, persistence, messaging, transaction boundaries or external integrations is an architectural decision: write a new ADR in `docs/adr/` (template in its README) before or with the code, and update `docs/ARCHITECTURE.md`. Never rewrite an accepted ADR: supersede it with a new one.
 - After a non-trivial change, run the `architecture-reviewer` subagent on the diff.
-- Migrations: add a new migration, never edit one that is already committed.
+- Migrations: edit freely until pushed; once on `origin/main` they are forward-only (never edited, `Down` never run on a shared database). No expand/contract: breaking changes go out in one release; the risky operations are listed in `docs/EFCore.md` as a reference ([ADR-0010](docs/adr/0010-migrations-editable-until-pushed.md)).
 - Keep docs in English; commit messages short and imperative.

@@ -19,11 +19,12 @@ Read `CLAUDE.md`, `docs/ARCHITECTURE.md` and every ADR in `docs/adr/` whose topi
 1. **Dependency direction**: `Domain` references no other project and no EF, HTTP or infrastructure package (only `MediatR.Contracts`). `Application` never references the `Infrastructure` project or provider SDKs (OpenAI, Npgsql, MongoDB driver). Check `using` directives and `.csproj` files.
 2. **Domain**: state changes only through aggregate methods; no public setters; invariants enforced inside the aggregate and raised as `DomainException`; child entities changed only through the root; ids generated in the domain; no `DateTime.Now`.
 3. **Application**: command handlers coordinate (load, call domain, `SaveChangesAsync` once) and contain no business rules; query handlers use `IQueryContext`, not repositories; event handlers never call `SaveChanges`.
-4. **Infrastructure**: no business rules; new entities mapped with Fluent API configurations; schema changes come with a new migration and existing migrations are not edited.
-5. **Api**: endpoints only send a request and map the result; no try/catch for domain or application exceptions.
-6. **ADRs**: does the change contradict an accepted ADR? Does it introduce a decision with no ADR (new store, broker, transaction boundary, external service, new cross-cutting pattern)?
-7. **Tests**: new behaviour has tests in the right project (Domain / Application / Infrastructure), named `Method_Condition_Result`; no test calls the real LLM.
-8. **Secrets and AI**: no keys in committed files; prompt contents not logged.
+4. **Infrastructure**: no business rules; new entities mapped with Fluent API configurations; schema changes come with a new migration; migrations already on `origin/main` are not edited.
+5. **Migrations**: for each new migration, check every operation against the table "Changes that need attention" in `docs/EFCore.md` and report the risky ones as **notes**: this project accepts breaking changes in a single release (ADR-0010). Report as a **blocker** only data loss that the change does not intend (e.g. a rename scaffolded as drop + add).
+6. **Api**: endpoints only send a request and map the result; no try/catch for domain or application exceptions.
+7. **ADRs**: does the change contradict an accepted ADR? Does it introduce a decision with no ADR (new store, broker, transaction boundary, external service, new cross-cutting pattern)?
+8. **Tests**: new behaviour has tests in the right project (Domain / Application / Infrastructure), named `Method_Condition_Result`; no test calls the real LLM.
+9. **Secrets and AI**: no keys in committed files; prompt contents not logged.
 
 ## Output
 

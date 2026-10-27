@@ -24,6 +24,7 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 | [0007](0007-ichatclient-without-own-port.md) | `IChatClient` without a port of our own | Accepted |
 | [0008](0008-integration-tests-with-testcontainers.md) | Integration tests with Testcontainers | Accepted |
 | [0009](0009-migrations-with-migrator-container.md) | Migrations applied by a migrator container | Accepted |
+| [0010](0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after | Accepted |
 
 ## Template
 
