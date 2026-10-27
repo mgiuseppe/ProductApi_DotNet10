@@ -58,9 +58,14 @@ vs codes plugins:
 - C# Dev Kit - Adds .net related right clicks options to the folder explorer
 - REST Client - lets you use .http files to test api requests
 
-ClaudeCode:
-- Brainstorming
-- Writing tests / some of the code
+## Working with Claude Code
+
+The repository is set up for agentic development with Claude Code:
+- [CLAUDE.md](CLAUDE.md): commands, layer rules, conventions and workflow rules the agent follows
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the map of the solution
+- [docs/adr/](docs/adr/README.md): Architecture Decision Records, one per decision
+- `.claude/skills/verify-and-commit`: format, build, unit and integration tests, then commit (`/verify-and-commit`)
+- `.claude/agents/architecture-reviewer`: subagent that reviews a diff against the layer rules and the ADRs
 
 ## Clean Architecture
 
@@ -71,7 +76,7 @@ See [Clean Architecture](docs/CleanArchitecture.md)
 - `Behaviors/` contains a commented-out `UnitOfWorkBehavior` for reference, not registered: it would make the commit implicit and invisible from the handlers.
 - Query handlers read through `IQueryContext` (EF Core `DbSet`s) and bypass repositories, because a read does not need to protect invariants. As a consequence, Application references the EF Core package (never the Infrastructure project).
 - Query handler tests live in `Infrastructure.Tests`: they need a real `AppDbContext` to verify the SQL translation, and the context is internal to Infrastructure.
-- Each endpoint translates `NotFoundException`, `DomainException` and `ConflictException` with its own try/catch. A global `IExceptionHandler` would centralize it.
+- Endpoints contain no try/catch: `ProblemDetailsExceptionHandler` (a global `IExceptionHandler`) maps `NotFoundException`, `DomainException` and `ConflictException` to 404, 400 and 409.
 
 See [DomainEventsHandling](docs/DomainEventsHAndling.md)
 
@@ -110,6 +115,4 @@ see [CICD](docs/CICD.md)
 
 ## TODO
 - add .editorconfig
-- add claude.md to add dotnet format --verify-no-changes before commit 
-- add claude.md to add a test gateway before push (prove it works!)
-- use claude to commit and push so that it can enforce rules
+- optional git hooks (Husky.Net) as a second line behind `/verify-and-commit`
