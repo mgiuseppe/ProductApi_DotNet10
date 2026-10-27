@@ -38,8 +38,9 @@ public class SummarizeOrderQueryHandler(IQueryContext db,
 
         var orderJson = JsonSerializer.Serialize(order, _options);
         var historyEntriesJson = JsonSerializer.Serialize(
-                                    historyEntries.Select(e => new {
-                                        entry_type = e.GetType().Name, 
+                                    historyEntries.Select(e => new
+                                    {
+                                        entry_type = e.GetType().Name,
                                         entry = e
                                     }),
                                     _options);
