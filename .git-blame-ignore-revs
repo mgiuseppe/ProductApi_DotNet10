@@ -1,0 +1,8 @@
+# Formatting-only commits, ignored by git blame.
+# Local setup: git config blame.ignoreRevsFile .git-blame-ignore-revs (GitHub reads this file automatically).
+
+# dotnet format on the whole solution
+2c1aacc1bf3fbf81d74f2b57f91ff9e2220a74c9
+
+# dotnet format SummarizeOrderQuery
+d24519d1e55a87874334b60b3896b3744cff15f4
