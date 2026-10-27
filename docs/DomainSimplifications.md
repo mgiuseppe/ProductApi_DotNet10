@@ -12,5 +12,5 @@ This project is a learning exercise, so several areas are deliberately simplifie
 ## Vouchers
 - One single-use voucher per order, applied only at confirmation, so a draft never holds a discount to keep in sync.
 - `ValidatedVoucher` (internal constructor) is kept to demonstrate the "ticket" technique. An `internal` method on `Order` would give the same guarantee, since the ticket is issued and consumed inside the same domain service call. It does not prevent application code from calling `Voucher.Redeem` without confirming an order.
-- Concurrent double redemption is stopped by the unique index and translated to a `ConflictException` (HTTP 409) in `AppDbContext.SaveChangesAsync`. The error code is SQLite specific and must be revisited when moving to Postgres. Today it also treats any unique violation as a voucher conflict, which is only correct while this is the only unique index.
+- Concurrent double redemption is stopped by the unique index and translated to a `ConflictException` (HTTP 409) in `AppDbContext.SaveChangesAsync`. The check is on the Postgres unique violation (SqlState 23505). It treats any unique violation as a voucher conflict, which is only correct while this is the only unique index.
 - Time-dependent rules receive `now` from a `TimeProvider`, so expiry can be tested without the system clock.

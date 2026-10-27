@@ -84,7 +84,7 @@ They are meant to spot trends and anomalies (e.g. a spike of conflicts), not to 
 In the Aspire dashboard they are under *Metrics* → `ProductApi.Orders`.
 
 ## Health checks
-`AddDefaultHealthChecks()` and `MapHealthChecks()` in `Api/DependencyInjection.cs` expose two endpoints:
+`AddDefaultHealthChecks()` and `MapHealthChecks()` in `Api/DependencyInjection.cs` expose two endpoints, mapped only in Development until their security is reviewed (README TODO):
 
 | Endpoint | Meaning | Checks run |
 |---|---|---|

@@ -62,7 +62,7 @@ flowchart LR
 - **OIDC federated credentials** instead of stored secrets: Microsoft recommends OpenID Connect for GitHub Actions because no persistent credential can leak. One identity **per environment**, with minimal RBAC, so a staging run can never touch production.
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
-- **Telemetry:** OpenTelemetry exports to Azure Monitor / Application Insights in production. The Aspire dashboard used in `compose.yml` is a development tool only.
+- **Telemetry:** OpenTelemetry exports to Azure Monitor / Application Insights in production. The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
 ## 5. Infrastructure
  
@@ -80,7 +80,7 @@ flowchart LR
 ## 7. Health and rollout
  
 - `/alive` is the liveness check (the process is up) and `/health` the full one (database included). The platform probes use them.
-- Today the health endpoints are mapped only in `Development`. If production probes rely on them, they must be mapped in production too, after reviewing what they expose.
+- Today the health endpoints are mapped only in `Development`. Production probes rely on them, so they must be mapped in production too, after reviewing what they expose (README TODO).
 - Rollout creates a new revision of the application and shifts traffic to it; rollback shifts it back or redeploys the previous tag, the exact mechanism is up to the chosen platform.
 
 ## Not covered

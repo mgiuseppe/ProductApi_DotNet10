@@ -34,8 +34,11 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
 
-// Health check
-app.MapHealthChecks();
+// Health check: Development only until we review what /alive and /health expose (see README TODO)
+if (app.Environment.IsDevelopment())
+{
+    app.MapHealthChecks();
+}
 
 // custom endpoints
 app.MapTestEndpointsInDevelopment();

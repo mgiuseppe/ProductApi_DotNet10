@@ -78,7 +78,7 @@ See [Clean Architecture](docs/CleanArchitecture.md)
 - Query handler tests live in `Infrastructure.Tests`: they need a real `AppDbContext` to verify the SQL translation, and the context is internal to Infrastructure.
 - Endpoints contain no try/catch: `ProblemDetailsExceptionHandler` (a global `IExceptionHandler`) maps `NotFoundException`, `DomainException` and `ConflictException` to 404, 400 and 409.
 
-See [DomainEventsHandling](docs/DomainEventsHAndling.md)
+See [DomainEventsHandling](docs/DomainEventsHandling.md)
 
 ## Testing Strategy
 
@@ -94,7 +94,7 @@ See [EFCore](docs/EFCore.md)
 
 - OpenTelemetry traces, metrics and logs (automatic instrumentation), exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
 - Custom metrics: meter `ProductApi.Orders` with `orders.confirmed` and `vouchers.redemption.concurrent_conflicts`
-- Health checks: `/alive` (liveness) and `/health` (readiness, includes the database), excluded from tracing
+- Health checks: `/alive` (liveness) and `/health` (readiness, includes the database), excluded from tracing, mapped only in Development
 
 See [Observability](docs/Observability.md)
 
@@ -116,3 +116,4 @@ see [CICD](docs/CICD.md)
 ## TODO
 - add .editorconfig
 - optional git hooks (Husky.Net) as a second line behind `/verify-and-commit`
+- review the security of `/alive` and `/health` (what they expose, who can reach them), then map them outside Development too

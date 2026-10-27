@@ -88,7 +88,7 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 
 ## Observability
 
-OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB) ([Observability](Observability.md)).
+OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), mapped only in Development ([Observability](Observability.md)).
 
 ## Testing
 
@@ -109,7 +109,7 @@ See [ADR-0008](adr/0008-integration-tests-with-testcontainers.md) and [TestingSt
 
 - Domain event handlers run inside the request and before the commit: added latency, possible Mongo orphans, no outbox.
 - Every unique violation is translated to a voucher conflict: correct only while the voucher index is the only unique index.
-- Health endpoints are mapped in every environment and expose dependency status: review before production.
+- Health endpoints are mapped only in Development: production probes need them, after a review of what they expose.
 - The summary endpoint returns 500 when the LLM call fails (no 503 mapping yet).
 - No authentication or authorization.
 
