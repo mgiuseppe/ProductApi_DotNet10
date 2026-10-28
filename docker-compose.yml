@@ -1,4 +1,4 @@
-# - docker compose up -d                      -> infrastructure only (postgres, mongo, aspire-dashboard, migrator): run the API with F5
+# - docker compose up -d                      -> infrastructure only (sqlserver, mongo, aspire-dashboard, migrator): run the API with F5
 # - docker compose --profile app up --build -d -> everything, API included (http://localhost:8080)
 # Aspire dashboard: http://localhost:18888
 # Host ports default to the ones in appsettings.Development.json and can be overridden in a .env file (see .env.example)
@@ -7,26 +7,25 @@
 
 # Shared by api and migrator (both build the app host, so both need the two connection strings)
 x-connection-strings: &connection-strings
-  ConnectionStrings__DbConnection: "Host=postgres;Port=5432;Database=productapi;Username=productapi;Password=productapi"
+  ConnectionStrings__DbConnection: "Server=sqlserver,1433;Database=productapi;User Id=sa;Password=ProductApi!Dev2026;TrustServerCertificate=True"
   ConnectionStrings__MongoDb: "mongodb://mongo:27017/productapi"
 
 services:
-  postgres:
-    image: postgres:18
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
     environment:
-      POSTGRES_USER: productapi
-      POSTGRES_PASSWORD: productapi
-      POSTGRES_DB: productapi
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "ProductApi!Dev2026" # must meet the SQL Server complexity policy; the database is created by the migrator
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${SQLSERVER_PORT:-1433}:1433"
     volumes:
-      # postgres 18+ stores data under /var/lib/postgresql/<major>/docker
-      - pgdata:/var/lib/postgresql
+      - mssqldata:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U productapi -d productapi"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 20s
 
   mongo:
     image: mongo
@@ -57,7 +56,7 @@ services:
     environment:
       <<: *connection-strings
     depends_on:
-      postgres:
+      sqlserver:
         condition: service_healthy
 
   api:
@@ -81,5 +80,5 @@ services:
         condition: service_started
 
 volumes:
-  pgdata:
+  mssqldata:
   mongodata:

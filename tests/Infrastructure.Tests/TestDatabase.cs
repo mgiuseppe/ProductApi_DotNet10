@@ -1,38 +1,61 @@
+using System.Collections.Concurrent;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
-using Testcontainers.PostgreSql;
+using Respawn;
+using Respawn.Graph;
+using Testcontainers.MsSql;
 
 namespace Infrastructure.Tests;
 
 /// <summary>
-/// A throwaway Postgres database, created by a test and dropped when the test ends.
+/// An empty, migrated SQL Server database owned by one test at a time.
 /// - One container serves the whole test run: it starts on first use and the Testcontainers
 ///   resource reaper (Ryuk) removes it when the test process exits, even if the run crashes.
-/// - Migrations are applied once to a template database; each test clones it (CREATE DATABASE ... TEMPLATE),
-///   which is much faster than migrating every time and lets test classes run in parallel.
+/// - Databases are pooled: CreateAsync takes a free one (or creates and migrates a new one) and DisposeAsync
+///   deletes its rows with Respawn and gives it back. SQL Server runs CREATE DATABASE and RESTORE one at a time,
+///   so a fresh database per test made the run several times slower; the pool only grows to the number of
+///   tests running in parallel.
 /// </summary>
 internal sealed class TestDatabase : IAsyncDisposable
 {
-    private const string TemplateName = "productapi_template";
-    private static readonly PostgreSqlContainer Container = new PostgreSqlBuilder("postgres:18").Build();
-    private static readonly Lazy<Task> Ready = new(StartAndMigrateTemplateAsync);
+    private static readonly MsSqlContainer Container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2025-latest").Build();
+    private static readonly Lazy<Task> Started = new(() => Container.StartAsync());
+    private static readonly ConcurrentBag<TestDatabase> Pool = [];
+
+    private static readonly RespawnerOptions ResetOptions = new()
+    {
+        TablesToIgnore = [new Table("__EFMigrationsHistory")], // keep the database migrated
+    };
 
     private readonly string _name;
+    private readonly Respawner? _respawner; // null for a database with no tables: it is dropped, not reused
     public string ConnectionString { get; }
 
-    private TestDatabase(string name)
+    private TestDatabase(string name, Respawner? respawner)
     {
         _name = name;
+        _respawner = respawner;
         ConnectionString = ConnectionStringFor(name);
     }
 
     /// <param name="migrated">false creates a database with no tables</param>
     public static async Task<TestDatabase> CreateAsync(bool migrated = true)
     {
-        await Ready.Value;
+        await Started.Value;
+        if (migrated && Pool.TryTake(out var pooled))
+            return pooled;
+
         var name = $"test_{Guid.NewGuid():N}";
-        await ExecuteAsync(migrated ? $"CREATE DATABASE {name} TEMPLATE {TemplateName}" : $"CREATE DATABASE {name}");
-        return new TestDatabase(name);
+        await ExecuteAsync($"CREATE DATABASE [{name}]");
+        if (!migrated)
+            return new TestDatabase(name, respawner: null);
+
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseAppDatabase(ConnectionStringFor(name)).Options;
+        await using (var db = new AppDbContext(options))
+            await db.Database.MigrateAsync();
+        await using var connection = new SqlConnection(ConnectionStringFor(name));
+        await connection.OpenAsync();
+        return new TestDatabase(name, await Respawner.CreateAsync(connection, ResetOptions)); // reads the schema once
     }
 
     public DbContextOptions<AppDbContext> Options() =>
@@ -40,30 +63,32 @@ internal sealed class TestDatabase : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        using (var connection = new NpgsqlConnection(ConnectionString))
-            NpgsqlConnection.ClearPool(connection); // idle pooled connections would be killed by the drop anyway
-        await ExecuteAsync($"DROP DATABASE {_name} WITH (FORCE)");
-    }
+        if (_respawner is not null)
+        {
+            await using (var connection = new SqlConnection(ConnectionString))
+            {
+                await connection.OpenAsync();
+                await _respawner.ResetAsync(connection);
+            }
+            Pool.Add(this);
+            return;
+        }
 
-    private static async Task StartAndMigrateTemplateAsync()
-    {
-        await Container.StartAsync();
-        await ExecuteAsync($"CREATE DATABASE {TemplateName}");
-        var options = new DbContextOptionsBuilder<AppDbContext>().UseAppDatabase(ConnectionStringFor(TemplateName)).Options;
-        await using (var db = new AppDbContext(options))
-            await db.Database.MigrateAsync();
-        NpgsqlConnection.ClearAllPools(); // a template cannot be cloned while a connection to it is open
+        using (var connection = new SqlConnection(ConnectionString))
+            SqlConnection.ClearPool(connection);
+        // SINGLE_USER ... ROLLBACK IMMEDIATE closes any connection still open before the drop
+        await ExecuteAsync($"ALTER DATABASE [{_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{_name}]");
     }
 
     private static string ConnectionStringFor(string database) =>
-        new NpgsqlConnectionStringBuilder(Container.GetConnectionString()) { Database = database }.ConnectionString;
+        new SqlConnectionStringBuilder(Container.GetConnectionString()) { InitialCatalog = database }.ConnectionString;
 
-    // Runs on the default "postgres" database: CREATE/DROP DATABASE cannot target the database you are connected to
+    // Runs on the default "master" database: CREATE/DROP DATABASE cannot target the database you are connected to
     private static async Task ExecuteAsync(string sql)
     {
-        await using var connection = new NpgsqlConnection(Container.GetConnectionString());
+        await using var connection = new SqlConnection(Container.GetConnectionString());
         await connection.OpenAsync();
-        await using var command = new NpgsqlCommand(sql, connection);
+        await using var command = new SqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync();
     }
 }

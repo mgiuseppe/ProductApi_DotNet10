@@ -1,6 +1,6 @@
 # 0006. PostgreSQL for aggregates, MongoDB for order history
 
-- Status: Accepted
+- Status: Superseded by [0013](0013-sql-server-for-aggregates.md)
 - Date: 2026-10-14
 
 ## Context

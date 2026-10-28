@@ -9,7 +9,7 @@ A single API that manages **products**, **orders** (draft, confirmed, shipped, c
 ```mermaid
 flowchart LR
   Client -->|HTTP| Api
-  Api --> Postgres[(PostgreSQL<br/>products, orders, vouchers)]
+  Api --> SqlServer[(SQL Server / Azure SQL<br/>products, orders, vouchers)]
   Api --> Mongo[(MongoDB<br/>order history)]
   Api -->|IChatClient| OpenAI
   Api -->|OTLP| Dashboard[Aspire dashboard /<br/>OTel collector]
@@ -73,13 +73,13 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 |---|---|---|
 | `NotFoundException` | Handlers | 404 |
 | `DomainException` | Aggregates | 400 |
-| `ConflictException` | `AppDbContext.SaveChangesAsync` on a Postgres unique violation (concurrent voucher redemption) | 409 |
+| `ConflictException` | `AppDbContext.SaveChangesAsync` on a SQL Server unique violation, errors 2601/2627 (concurrent voucher redemption) | 409 |
 | `BadHttpRequestException` | Minimal API binding (missing required parameter, malformed JSON body) | its own status, usually 400 |
 | anything else | | 500 with `traceId` |
 
 ## Persistence
 
-- **PostgreSQL** (EF Core, Npgsql, snake_case names) is the source of truth for the three aggregates ([ADR-0006](adr/0006-postgresql-and-mongodb.md), [EFCore](EFCore.md)).
+- **SQL Server** (EF Core, Azure SQL in the cloud, snake_case names) is the source of truth for the three aggregates ([ADR-0013](adr/0013-sql-server-for-aggregates.md), [EFCore](EFCore.md)).
 - **MongoDB** stores the order history entries (polymorphic documents), written by domain event handlers. It is not in the EF transaction: a rolled-back save can leave orphan history entries, accepted for a learning scope.
 - **Migrations** are applied by a separate `migrator` container (EF migrations bundle) before the API starts, never at API startup ([ADR-0009](adr/0009-migrations-with-migrator-container.md)). Mongo indexes are created idempotently at startup.
 
@@ -97,9 +97,9 @@ OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORT
 |---|---|---|
 | `Domain.Tests` | Aggregates and domain services | None |
 | `Application.Tests` | Command and event handlers | Moq |
-| `Infrastructure.Tests` | Repositories, interceptor, **query handlers** | Postgres via Testcontainers, one database per test cloned from a migrated template |
+| `Infrastructure.Tests` | Repositories, interceptor, **query handlers** | SQL Server via Testcontainers, a pool of migrated databases emptied with Respawn after each test |
 
-See [ADR-0008](adr/0008-integration-tests-with-testcontainers.md) and [TestingStrategy](TestingStrategy.md).
+See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [TestingStrategy](TestingStrategy.md).
 
 ## Runtime and delivery
 
@@ -123,10 +123,12 @@ See [ADR-0008](adr/0008-integration-tests-with-testcontainers.md) and [TestingSt
 | [0003](adr/0003-cqrs-with-mediatr.md) | CQRS with MediatR, queries bypass repositories |
 | [0004](adr/0004-repositories-and-unit-of-work.md) | Collection-like repositories, `DbContext` as unit of work, explicit commit |
 | [0005](adr/0005-domain-events-before-commit.md) | Domain events dispatched before the commit by an EF interceptor, no outbox |
-| [0006](adr/0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history |
+| [0006](adr/0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history (superseded by 0013) |
 | [0007](adr/0007-ichatclient-without-own-port.md) | `IChatClient` used directly, no port of our own |
-| [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers |
+| [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers (superseded by 0014) |
 | [0009](adr/0009-migrations-with-migrator-container.md) | Migrations applied by a dedicated migrator container |
 | [0010](adr/0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after |
 | [0011](adr/0011-github-flow.md) | GitHub Flow with a protected `main` |
 | [0012](adr/0012-squash-merge-only.md) | Squash merge only |
+| [0013](adr/0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history |
+| [0014](adr/0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases |

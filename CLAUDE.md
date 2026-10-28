@@ -1,13 +1,13 @@
 # CLAUDE.md
 
-Product / order / voucher API built to refresh .NET skills: .NET 10, Clean Architecture, DDD aggregates, CQRS with MediatR, EF Core on PostgreSQL, order history on MongoDB, OpenTelemetry, one LLM feature via `IChatClient`.
+Product / order / voucher API built to refresh .NET skills: .NET 10, Clean Architecture, DDD aggregates, CQRS with MediatR, EF Core on SQL Server (Azure SQL), order history on MongoDB, OpenTelemetry, one LLM feature via `IChatClient`.
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before changing structure, and the ADRs in [docs/adr/](docs/adr/README.md) before revisiting a decision.
 
 ## Commands
 
 ```bash
-docker compose up -d                                   # Postgres, MongoDB, Aspire dashboard, migrator
+docker compose up -d                                   # SQL Server, MongoDB, Aspire dashboard, migrator
 dotnet run --project src/Api                           # API on http://localhost:5224
 dotnet build ProductApi.slnx
 dotnet format ProductApi.slnx --verify-no-changes      # format gate
@@ -32,7 +32,7 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 - Ids are generated in the domain (`Guid.NewGuid()`, `ValueGeneratedNever`).
 - Dates are UTC; time-dependent code takes `TimeProvider`, never `DateTime.Now`.
 - Collections returned from repositories and queries are `IReadOnlyList<T>` (materialized), not `IEnumerable<T>`.
-- Postgres uses snake_case names: raw SQL must use them (`discount_amount`).
+- The relational database uses snake_case names: raw SQL must use them (`discount_amount`).
 - Event handlers must not call `SaveChanges` (it re-enters the interceptor).
 - Prompts and `ChatOptions` stay in the use case handler; never log prompt contents.
 - Secrets never go in `appsettings.json`: user-secrets for F5, `.env` for Docker.
@@ -40,7 +40,7 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 ## Tests
 
 - One test class per tested class, names `Method_Condition_Result`, AAA comments (`// Arrange`, `// Act`, `// Assert`), xUnit + Moq.
-- Domain logic -> `Domain.Tests`. Command handlers -> `Application.Tests` with mocked repositories. Repositories and **query handlers** -> `Infrastructure.Tests` against real Postgres.
+- Domain logic -> `Domain.Tests`. Command handlers -> `Application.Tests` with mocked repositories. Repositories and **query handlers** -> `Infrastructure.Tests` against real SQL Server.
 - Never call the real LLM in tests: mock `IChatClient`.
 
 ## Workflow rules
