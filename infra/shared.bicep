@@ -1,4 +1,5 @@
-// Resources shared by every environment (ADR-0017), deployed as their own deployment stack before the environments:
+// Resources shared by every environment (ADR-0017): own deployment stack, deployed by the pipeline before the environments
+// on every run (idempotent), deleted only by the "tear down everything" operation:
 //   az stack sub create --name productapi-shared --location northeurope \
 //     --template-file infra/shared.bicep --parameters infra/shared.bicepparam \
 //     --action-on-unmanage detachAll --deny-settings-mode denyDelete

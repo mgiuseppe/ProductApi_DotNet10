@@ -133,5 +133,5 @@ See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [Testing
 | [0013](adr/0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history |
 | [0014](adr/0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases |
 | [0015](adr/0015-bicep-with-deployment-stacks.md) | Bicep in `infra/`, one deployment stack per environment that never deletes on deploy |
-| [0016](adr/0016-azure-sql-with-managed-identity.md) | Azure SQL with Entra-only authentication and one managed identity each for the API and the migrator |
+| [0016](adr/0016-secrets-in-key-vault.md) | SQL and MongoDB passwords in a Key Vault per environment, read by the app and the migrator through system-assigned identities |
 | [0017](adr/0017-shared-free-mongodb-cluster.md) | One free DocumentDB (MongoDB) cluster shared by staging and production, North Europe |

@@ -1,7 +1,9 @@
 using 'main.bicep'
 
 param environmentName = 'production'
+param sqlAdminLogin = 'productapiadmin'
+param mongoAdminUser = 'productapiadmin' // same as shared.bicepparam
 
-// Pipeline identity of the production environment (ADR-0016): not secret, set by the workflow from GitHub environment variables
-param sqlAdminLogin = readEnvironmentVariable('SQL_ADMIN_LOGIN')
-param sqlAdminObjectId = readEnvironmentVariable('SQL_ADMIN_OBJECT_ID')
+// From GitHub secrets (ADR-0016, ADR-0017): never written in this file
+param sqlAdminPassword = readEnvironmentVariable('SQL_ADMIN_PASSWORD')
+param mongoAdminPassword = readEnvironmentVariable('MONGO_ADMIN_PASSWORD')

@@ -1,40 +1,26 @@
-// Azure SQL with Entra-only authentication and the free offer (ADR-0013, ADR-0016).
+// Azure SQL with a SQL login and the free offer (ADR-0013, ADR-0016).
 param serverName string
 param databaseName string
 param location string
 param tags object
-
-@description('Display name of the Entra admin (the pipeline identity of the environment).')
 param adminLogin string
 
-@description('Object id of the Entra admin.')
-param adminObjectId string
+@secure()
+param adminPassword string
 
 resource server 'Microsoft.Sql/servers@2025-01-01' = {
   name: serverName
   location: location
   tags: tags
-  // Lets the server look up Entra identities when the pipeline creates database users (ADR-0016)
-  identity: {
-    type: 'SystemAssigned'
-  }
   properties: {
+    administratorLogin: adminLogin
+    administratorLoginPassword: adminPassword
     minimalTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
-    administrators: {
-      administratorType: 'ActiveDirectory'
-      azureADOnlyAuthentication: true // no SQL logins, so no password can exist
-      principalType: 'Application'
-      login: adminLogin
-      sid: adminObjectId
-      tenantId: tenant().tenantId
-    }
   }
 }
 
-// Consumption Container Apps have no fixed outbound IP: allow Azure services (0.0.0.0 is the special "Azure" rule).
-// The pipeline adds and removes a rule for the runner IP while it creates the database users (ADR-0016): this works
-// because denyDelete does not apply to child resources; do not enable --deny-settings-apply-to-child-scopes.
+// Consumption Container Apps have no fixed outbound IP: allow Azure services (0.0.0.0 is the special "Azure" rule)
 resource allowAzureServices 'Microsoft.Sql/servers/firewallRules@2025-01-01' = {
   parent: server
   name: 'AllowAllWindowsAzureIps'
@@ -65,6 +51,5 @@ resource database 'Microsoft.Sql/servers/databases@2025-01-01' = {
   }
 }
 
-output serverName string = server.name
 output serverFqdn string = server.properties.fullyQualifiedDomainName
 output databaseName string = database.name

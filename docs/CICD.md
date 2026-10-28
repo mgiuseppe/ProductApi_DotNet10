@@ -63,7 +63,7 @@ flowchart LR
 - **GitHub Environments** (`staging`, `production`) with required reviewers for production.
 - **OIDC federated credentials** instead of stored secrets: Microsoft recommends OpenID Connect for GitHub Actions because no persistent credential can leak. One identity **per environment**, with minimal RBAC, so a staging run can never touch production.
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
-- **Database access:** the API and the migrator reach Azure SQL with their own system-assigned managed identities and Entra authentication; SQL logins are disabled. The pipeline identity is the Entra admin and creates the database users after the infrastructure deployment ([ADR-0016](adr/0016-azure-sql-with-managed-identity.md)).
+- **Secrets:** the SQL and MongoDB passwords are GitHub secrets passed to Bicep; Bicep writes the connection strings into the Key Vault of the environment, and the Container App and the migrator job read them through their system-assigned identity ([ADR-0016](adr/0016-secrets-in-key-vault.md)).
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
 - **Telemetry:** OpenTelemetry exports to Azure Monitor / Application Insights in production. The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
@@ -75,7 +75,7 @@ flowchart LR
   - `infra/main.bicep` at subscription scope creates the resource group and calls the modules in `infra/modules/`; `infra/<environment>.bicepparam` holds what differs between environments.
   - Deploy: `az stack sub create --action-on-unmanage detachAll --deny-settings-mode denyDelete`. A deployment never deletes resources, and resources of the stack cannot be deleted by hand.
   - Teardown: `az stack sub delete --action-on-unmanage deleteAll`, a separate manual operation and the only one that deletes resources.
-  - A third stack, `productapi-shared`, owns the free DocumentDB cluster used by both environments, one database each ([ADR-0017](adr/0017-shared-free-mongodb-cluster.md)). Everything runs in North Europe.
+  - A third stack, `productapi-shared`, owns the free DocumentDB cluster used by both environments, one database each. The pipeline deploys it on every run before the environments (idempotent); only "tear down everything" deletes it ([ADR-0017](adr/0017-shared-free-mongodb-cluster.md)). Everything runs in North Europe.
   - The pull request builds and lints the `.bicep` files (`infra/bicepconfig.json`) and shows a preview of the changes before approval. The `.bicepparam` files read pipeline values with `readEnvironmentVariable` and compile only inside a GitHub environment that provides them.
 
 ## 6. Database migrations
