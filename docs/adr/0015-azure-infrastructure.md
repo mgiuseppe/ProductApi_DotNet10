@@ -17,11 +17,11 @@ The app needs Azure SQL ([0013](0013-sql-server-for-aggregates.md)) and MongoDB 
   - `--deny-settings-mode denyDelete`: resources managed by a stack cannot be deleted by hand.
 - **Teardown is a separate, explicit operation**: `az stack sub delete --action-on-unmanage deleteAll`, by hand or with a manual workflow with a confirmation input. Tearing down an environment leaves the shared stack alone; "tear down everything" deletes it last.
 - **Conventions**: Cloud Adoption Framework abbreviations for names (`rg-`, `cae-`, `ca-`, `sql-`, `kv-`) plus `uniqueString()` where a name must be globally unique; tags `app`, `environment`, `managedBy`; linter rules in `infra/bicepconfig.json`, the important ones as errors.
-- **Pipeline**: the pull request lints the Bicep files and shows a preview; a merge on `main` deploys the shared stack (idempotent), then staging, then production after manual approval. It signs in with OIDC, one identity per environment.
+- **Pipeline**: the pull request lints the Bicep files; a merge on `main` deploys the shared stack (idempotent), then staging, then production after manual approval. It signs in with OIDC, one identity per environment. Images come from GitHub Container Registry (public packages, no registry cost).
 
 ### Secrets
 - **SQL authentication with an administrator login and password**, and the MongoDB administrator password: GitHub secrets (`SQL_ADMIN_PASSWORD`, `MONGO_ADMIN_PASSWORD`), passed to Bicep as `@secure()` parameters.
-- **One Key Vault per environment** holding the two connection strings, written by Bicep. The Container App and the migrator job have a **system-assigned identity** with *Key Vault Secrets User* on that vault and read them as Key Vault secret references. The identity only reads secrets; it never authenticates to the databases.
+- **One Key Vault per environment** holding the two connection strings, written by Bicep. The Container App and the migrator job share a **user-assigned identity** of the environment with *Key Vault Secrets User* on that vault and read them as Key Vault secret references. User-assigned because a Container App checks its Key Vault references when it is created: a system-assigned identity would be born with the app, before it could be granted access. The identity only reads secrets; it never authenticates to the databases.
 
 ### Shared MongoDB cluster
 - **One free DocumentDB cluster shared by staging and production**, each with its own database (`productapi-staging`, `productapi-production`), in the shared stack, only to avoid paying for a second cluster.

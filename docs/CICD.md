@@ -3,7 +3,7 @@
 Cicd · MD
 # CI/CD
  
-> **Status: partly implemented.** The Bicep templates for the infrastructure exist in `infra/` (no Container App or migrator job yet); the pipeline does not.
+> **Status: written, not yet run.** Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. The one-time setup is in [SETUP_CICD_ONETIME.md](../SETUP_CICD_ONETIME.md).
 > This document records how I would build, test and deploy the project, and why.
  
 ## Principles
@@ -30,7 +30,7 @@ A push to a feature branch is never rejected: the checks run afterwards and bloc
  
 Ruleset on `main` ([CONTRIBUTING](../CONTRIBUTING.md)): no direct pushes, no force pushes, no bypass, required checks green, squash merge only ([CONTRIBUTING](../CONTRIBUTING.md#squash-merge-only)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
 
-The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in the README, section "One-time repository setup".
+The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in [SETUP_CICD_ONETIME.md](../SETUP_CICD_ONETIME.md).
  
 | # | Check | Notes |
 |---|---|---|
@@ -54,7 +54,8 @@ flowchart LR
   E --> F[Post-deploy checks]
 ```
  
-- **Registry:** Azure Container Registry (or GitHub Container Registry). On Azure Container Apps the images must be in a registry before they can run.
+- **Registry:** GitHub Container Registry (`ghcr.io/mgiuseppe/productapi-api`, `-migrator`), public packages, so Container Apps pull without credentials; Azure Container Registry would cost about 5 USD a month.
+- **Order in each environment** (`deploy.yml`): the stack is deployed with the API image already running and the new migrator image; the migrator job runs and must succeed; only then the API gets the new image; a smoke test calls the public URL.
 - **Staging first,** then a manual approval, then production with the **same image** and the same steps.
 - **Rollback** means redeploying the previous image tag. The database is not rolled back (see Migrations).
 
@@ -63,7 +64,7 @@ flowchart LR
 - **GitHub Environments** (`staging`, `production`) with required reviewers for production.
 - **OIDC federated credentials** instead of stored secrets: Microsoft recommends OpenID Connect for GitHub Actions because no persistent credential can leak. One identity **per environment**, with minimal RBAC, so a staging run can never touch production.
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
-- **Secrets:** the SQL and MongoDB passwords are GitHub secrets passed to Bicep; Bicep writes the connection strings into the Key Vault of the environment, and the Container App and the migrator job read them through their system-assigned identity ([ADR-0015](adr/0015-azure-infrastructure.md)).
+- **Secrets:** the SQL and MongoDB passwords are GitHub secrets passed to Bicep; Bicep writes the connection strings into the Key Vault of the environment, and the Container App and the migrator job read them through a user-assigned identity of the environment ([ADR-0015](adr/0015-azure-infrastructure.md)).
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
 - **Telemetry:** OpenTelemetry exports to Azure Monitor / Application Insights in production. The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
@@ -93,11 +94,8 @@ flowchart LR
 
 ## Not covered
  
-- Pipeline files (`.github/workflows/*.yml`): not written yet. Bicep: infrastructure only, the Container App and the migrator job are still missing.
+- A `what-if` preview of the Bicep changes on pull requests (it needs an Azure sign-in from pull requests).
+- Logs and traces in Azure: the Container Apps environment has no log destination yet.
 - Cloud costs, backups and retention of the managed databases.
 - Image vulnerability scanning, SBOM (an inventory of the components in the image) and signing (to verify that an image comes from the pipeline and was not altered).
 - Trace sampling and alerting.
-
-## Why it is not implemented
-
-This is a learning project, so the pipeline itself is out of scope. If I had to implement it, the first step would be a `ci.yml` GitHub Actions workflow for pull requests. The deployment stages depend on the target platform..

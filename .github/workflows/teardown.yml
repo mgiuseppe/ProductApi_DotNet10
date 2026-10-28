@@ -1,0 +1,80 @@
+# The only operation that deletes Azure resources (ADR-0015). Manual, with a typed confirmation.
+# An environment teardown leaves the shared MongoDB cluster alone; "everything" deletes it last.
+name: Teardown
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to delete
+        type: choice
+        options: [staging, production, everything]
+      confirm:
+        description: Type the target again to confirm
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.targets.outputs.environments }}
+    steps:
+      - name: Check the confirmation
+        if: inputs.confirm != inputs.target
+        run: |
+          echo "Confirmation does not match the target: nothing deleted."
+          exit 1
+      # Only the targeted environments get a job: an untargeted production job would still wait for its approval
+      - name: Environments to delete
+        id: targets
+        run: |
+          if [ "${{ inputs.target }}" = "everything" ]; then
+            echo 'environments=["staging","production"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'environments=["${{ inputs.target }}"]' >> "$GITHUB_OUTPUT"
+          fi
+
+  environment:
+    needs: confirm
+    strategy:
+      fail-fast: false
+      matrix:
+        name: ${{ fromJSON(needs.confirm.outputs.environments) }}
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.name }}
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete the stack and everything it manages
+        run: az stack sub delete --name "productapi-${{ matrix.name }}" --action-on-unmanage deleteAll --yes
+
+      # Soft-deleted vaults keep their name for 7 days: purge so the environment can be recreated right away
+      - name: Purge the Key Vault
+        run: |
+          for vault in $(az keyvault list-deleted --resource-type vault \
+            --query "[?properties.tags.app=='productapi' && properties.tags.environment=='${{ matrix.name }}'].name" -o tsv); do
+            az keyvault purge --name "$vault"
+          done
+
+  shared:
+    needs: environment
+    if: inputs.target == 'everything'
+    runs-on: ubuntu-latest
+    environment: staging # same identity that deploys it
+    steps:
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Delete the shared stack (MongoDB cluster)
+        run: az stack sub delete --name productapi-shared --action-on-unmanage deleteAll --yes

@@ -21,6 +21,12 @@ param sqlAdminLogin string
 @secure()
 param sqlAdminPassword string
 
+@description('API image (ghcr.io/...:<tag>). The pipeline passes the image currently running, so a deployment never ships new code before the migrator has run.')
+param apiImage string
+
+@description('Migrator image (ghcr.io/...:<tag>), the new version.')
+param migratorImage string
+
 @description('Administrator user of the shared MongoDB cluster (must match shared.bicepparam).')
 @minLength(1)
 param mongoAdminUser string
@@ -85,17 +91,58 @@ var mongoConnectionString = replace(
   '/${appName}-${environmentName}?'
 )
 
+module identity 'modules/identity.bicep' = {
+  scope: resourceGroup
+  params: {
+    name: 'id-${appName}-${environmentName}'
+    location: location
+    tags: tags
+  }
+}
+
 module keyVault 'modules/key-vault.bicep' = {
   scope: resourceGroup
   params: {
     name: 'kv-${appName}-${take(suffix, 8)}' // max 24 characters, globally unique
     location: location
     tags: tags
+    readerPrincipalId: identity.outputs.principalId
     sqlConnectionString: 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${sql.outputs.databaseName};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=True;TrustServerCertificate=False'
     mongoConnectionString: mongoConnectionString
   }
 }
 
+// App and job depend on the vault module outputs, so they are created after the identity can read the secrets
+module api 'modules/container-app.bicep' = {
+  scope: resourceGroup
+  params: {
+    name: 'ca-${appName}-${environmentName}'
+    location: location
+    tags: tags
+    environmentId: containerAppsEnvironment.outputs.id
+    identityId: identity.outputs.id
+    image: apiImage
+    sqlSecretUri: keyVault.outputs.sqlSecretUri
+    mongoSecretUri: keyVault.outputs.mongoSecretUri
+  }
+}
+
+module migrator 'modules/migrator-job.bicep' = {
+  scope: resourceGroup
+  params: {
+    name: 'caj-${appName}-mig-${environmentName}' // max 32 characters
+    location: location
+    tags: tags
+    environmentId: containerAppsEnvironment.outputs.id
+    identityId: identity.outputs.id
+    image: migratorImage
+    sqlSecretUri: keyVault.outputs.sqlSecretUri
+    mongoSecretUri: keyVault.outputs.mongoSecretUri
+  }
+}
+
 output resourceGroupName string = resourceGroup.name
-output containerAppsEnvironmentId string = containerAppsEnvironment.outputs.id
 output keyVaultName string = keyVault.outputs.name
+output apiName string = api.outputs.name
+output apiFqdn string = api.outputs.fqdn
+output migratorJobName string = migrator.outputs.name

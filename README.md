@@ -65,16 +65,9 @@ git switch -c feature/<short-name>          # or fix/, docs/, chore/
 gh pr merge --squash --delete-branch        # after reading the diff in the pull request
 ```
 
-### One-time repository setup
+### One-time setup
 
-The protection of `main` is versioned in `.github/rulesets/main.json`. GitHub does not read that file by itself: it is applied once with the GitHub CLI by a repository admin (`gh auth login` first, `gh auth status` to check):
-
-```bash
-gh api --method POST repos/mgiuseppe/ProductApi_DotNet10/rulesets --input .github/rulesets/main.json
-gh repo edit mgiuseppe/ProductApi_DotNet10 --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge
-```
-
-To change the protection, edit the file and update the existing ruleset: find its id with `gh api repos/mgiuseppe/ProductApi_DotNet10/rulesets`, then `gh api --method PUT repos/mgiuseppe/ProductApi_DotNet10/rulesets/<id> --input .github/rulesets/main.json`. Changes made in the GitHub UI are not written back to the file.
+Repository protection, Azure identities, GitHub environments and secrets: see [SETUP_CICD_ONETIME.md](SETUP_CICD_ONETIME.md).
 
 ## Tools and vscodes plugins
 
