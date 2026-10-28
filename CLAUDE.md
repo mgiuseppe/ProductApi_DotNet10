@@ -24,7 +24,7 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 - **Domain**: aggregates with private setters, private parameterless constructor for EF, static `Create` factories, state changes only through methods that enforce invariants and throw `DomainException`. No EF, no infrastructure. The only allowed external reference is `MediatR.Contracts` (`INotification` for domain events, [ADR-0005](docs/adr/0005-domain-events-before-commit.md)).
 - **Application**: one file per use case (`XxxCommand`/`XxxQuery` record + its handler, `internal`). Command handlers load via repositories, call domain methods, then `IUnitOfWork.SaveChangesAsync` explicitly. Query handlers read through `IQueryContext` and never through repositories. Responses map with `FromDomain`. References EF Core and `Microsoft.Extensions.AI.Abstractions` packages, never the Infrastructure project.
 - **Infrastructure**: `AppDbContext` (internal, is also `IUnitOfWork` and `IQueryContext`), Fluent API configurations, repositories, Mongo, AI client registration. No business rules.
-- **Api**: minimal API endpoints that send a MediatR request and map the result to an HTTP status. No try/catch: `ProblemDetailsExceptionHandler` maps `NotFoundException` (404), `DomainException` (400), `ConflictException` (409), anything else (500).
+- **Api**: minimal API endpoints that send a MediatR request and map the result to an HTTP status. No try/catch: `ProblemDetailsExceptionHandler` maps `NotFoundException` (404), `DomainException` (400), `ConflictException` (409), `BadHttpRequestException` (its status, usually 400), anything else (500).
 
 ## Conventions
 

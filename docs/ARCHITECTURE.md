@@ -74,6 +74,7 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 | `NotFoundException` | Handlers | 404 |
 | `DomainException` | Aggregates | 400 |
 | `ConflictException` | `AppDbContext.SaveChangesAsync` on a Postgres unique violation (concurrent voucher redemption) | 409 |
+| `BadHttpRequestException` | Minimal API binding (missing required parameter, malformed JSON body) | its own status, usually 400 |
 | anything else | | 500 with `traceId` |
 
 ## Persistence
