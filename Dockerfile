@@ -49,9 +49,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 # Set as ENV_VAR the port that will be listened by the app inside the container
-ENV ASPNETCORE_HTTP_PORTS=8080
+# 8080: API; 8081: health checks only (HealthChecks:Port), not exposed by the public ingress
+ENV ASPNETCORE_HTTP_PORTS=8080;8081
 # Documentation only: the port is published with -p (in docker run) or ports: (in compose)
-EXPOSE 8080
+EXPOSE 8080 8081
 
 # Copy Compiled output from the first stage
 COPY --from=build /app/publish .

@@ -1,4 +1,5 @@
-@Api_HostAddress = http://localhost:5224
+# Health checks answer only on the dedicated port (HealthChecks:Port): 5225 with F5, 8081 in Docker
+@Api_HostAddress = http://localhost:5225
 
 ### run just alive
 GET {{Api_HostAddress}}/alive

@@ -118,7 +118,7 @@ See [EFCore](docs/EFCore.md)
 
 - OpenTelemetry traces, metrics and logs (automatic instrumentation), exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
 - Custom metrics: meter `ProductApi.Orders` with `orders.confirmed` and `vouchers.redemption.concurrent_conflicts`
-- Health checks: `/alive` (liveness) and `/health` (readiness, includes the database), excluded from tracing, mapped only in Development
+- Health checks: `/alive` (liveness) and `/health` (readiness, includes the databases), excluded from tracing, served only on the dedicated port `HealthChecks:Port` (5225 with F5, 8081 in Docker)
 
 See [Observability](docs/Observability.md)
 
@@ -140,4 +140,3 @@ see [CICD](docs/CICD.md)
 ## TODO
 - add .editorconfig
 - optional git hooks (Husky.Net) as a second line behind `/verify-and-commit`
-- review the security of `/alive` and `/health` (what they expose, who can reach them), then map them outside Development too

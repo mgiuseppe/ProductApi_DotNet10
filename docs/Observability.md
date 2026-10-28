@@ -84,7 +84,7 @@ They are meant to spot trends and anomalies (e.g. a spike of conflicts), not to 
 In the Aspire dashboard they are under *Metrics* → `ProductApi.Orders`.
 
 ## Health checks
-`AddDefaultHealthChecks()` and `MapHealthChecks()` in `Api/DependencyInjection.cs` expose two endpoints, mapped only in Development until their security is reviewed (README TODO):
+`AddDefaultHealthChecks()` and `UseHealthChecksOnDedicatedPort()` in `Api/DependencyInjection.cs` expose two endpoints, in every environment, **only on the port `HealthChecks:Port`** (8081 in the container, 5225 with F5):
 
 | Endpoint | Meaning | Checks run |
 |---|---|---|
@@ -96,5 +96,9 @@ The `database` check is registered by `Infrastructure` (`AddDbContextCheck<AppDb
 Both return `200 Healthy` or `503 Unhealthy` with a plain-text body.
 
 Both endpoints are excluded from tracing (`Filter` on the ASP.NET Core instrumentation): orchestrators and load balancers call them every few seconds, so they would flood the backend with identical traces. The EF Core spans of the `database` check are dropped as well, because the default sampler is parent-based. They still appear in the HTTP server metrics, which are aggregated and cheap. To investigate slow probes, remove the filter temporarily.
+
+Why a dedicated port: the body says only `Healthy` or `Unhealthy`, so the endpoints reveal almost nothing, but every `/health` call queries SQL and MongoDB. On the public port anyone could load the databases (and keep a serverless Azure SQL database awake). The platform probes call the container directly on the dedicated port, which the public ingress does not expose. `UseHealthChecks(path, port)` matches the local port the request arrived on, not the `Host` header, which a client could forge; on the API port the paths return 404.
+
+The liveness check has no dependencies on purpose: a database outage must make the app not ready (no traffic), not restart it.
 
 Try them with `src/Api/TestsHttp/ApiHealthChecks.http`.

@@ -31,14 +31,11 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+// Health checks on their own port, in every environment (not reachable through the public ingress)
+app.UseHealthChecksOnDedicatedPort();
+
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
-
-// Health check: Development only until we review what /alive and /health expose (see README TODO)
-if (app.Environment.IsDevelopment())
-{
-    app.MapHealthChecks();
-}
 
 // custom endpoints
 app.MapTestEndpointsInDevelopment();
