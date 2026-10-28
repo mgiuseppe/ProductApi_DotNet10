@@ -33,6 +33,13 @@ internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExcep
                 Title = "There was a conflict.",
                 Detail = ce.Message
             }),
+            // Thrown by minimal API binding (missing required parameter, malformed JSON body...): a client error, not a 500
+            BadHttpRequestException be => (be.StatusCode, new ProblemDetails
+            {
+                Status = be.StatusCode,
+                Title = "Invalid request.",
+                Detail = be.Message
+            }),
             _ => (StatusCodes.Status500InternalServerError, new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
