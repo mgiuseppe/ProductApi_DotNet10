@@ -68,9 +68,11 @@ services:
       <<: *connection-strings
       ASPNETCORE_ENVIRONMENT: Development # exposes /openapi/v1.json
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://aspire-dashboard:18889"
+      HealthChecks__Port: "8081" # the container listens on 8080 and 8081 (Dockerfile), not on the F5 port of appsettings.Development.json
       OpenAI__ApiKey: "${OPENAI_API_KEY:-}" # from .env: user-secrets are not available in the container
     ports:
       - "${API_PORT:-8080}:8080"
+      - "${API_HEALTH_PORT:-8081}:8081" # health checks
     depends_on:
       migrator:
         condition: service_completed_successfully

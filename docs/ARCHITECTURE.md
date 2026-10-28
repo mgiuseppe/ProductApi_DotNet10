@@ -110,7 +110,6 @@ See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [Testing
 
 - Domain event handlers run inside the request and before the commit: added latency, possible Mongo orphans, no outbox.
 - Every unique violation is translated to a voucher conflict: correct only while the voucher index is the only unique index.
-- Health endpoints are mapped only in Development: production probes need them, after a review of what they expose.
 - The summary endpoint returns 500 when the LLM call fails (no 503 mapping yet).
 - No authentication or authorization.
 

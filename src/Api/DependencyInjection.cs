@@ -65,18 +65,25 @@ public static class DependencyInjection
         return builder;
     }
 
-    public static WebApplication MapHealthChecks(this WebApplication app)
+    /// <summary>
+    /// Serves the health checks only on the dedicated port <c>HealthChecks:Port</c>, in every environment.
+    /// The platform probes call that port directly; the public ingress exposes only the API port, so callers on
+    /// the Internet cannot reach them (each /health call queries the databases). The check is on the local port
+    /// the request arrived on, not on the Host header, which a client could set to anything.
+    /// </summary>
+    public static WebApplication UseHealthChecksOnDedicatedPort(this WebApplication app)
     {
-        // Liveness: the process is up. 
-        // Runs only checks tagged as "live".
-        app.MapHealthChecks(LivenessPath, new HealthCheckOptions
+        var port = app.Configuration.GetValue<int?>("HealthChecks:Port")
+                   ?? throw new InvalidOperationException("Configuration 'HealthChecks:Port' is required");
+
+        // Liveness: the process is up. Runs only checks tagged as "live", so a database outage never restarts the app.
+        app.UseHealthChecks(LivenessPath, port, new HealthCheckOptions
         {
             Predicate = check => check.Tags.Contains("live")
         });
 
-        // Readiness: the app can serve requests (database reachable).
-        // Runs every check.
-        app.MapHealthChecks(ReadinessPath);
+        // Readiness: the app can serve requests (databases reachable). Runs every check.
+        app.UseHealthChecks(ReadinessPath, port);
 
         return app;
     }
