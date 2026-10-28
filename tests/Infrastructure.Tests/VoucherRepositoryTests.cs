@@ -57,6 +57,26 @@ public class VoucherRepositoryTests : IAsyncLifetime
 
     // Integration Test
     [Fact]
+    public async Task GetByIdAsync_VoucherWithDates_ReturnsUtcKind()
+    {
+        // Arrange
+        var voucher = Voucher.Create(Start, End, 10.50m);
+        voucher.Redeem(Within);
+        await SeedAsync(voucher);
+
+        // Act
+        await using var db = NewContext();
+        var found = await new VoucherRepository(db).GetByIdAsync(voucher.Id, CancellationToken.None);
+
+        // Assert: DateTime equality ignores Kind, so check it explicitly (datetime2 stores no time zone)
+        Assert.NotNull(found);
+        Assert.Equal(DateTimeKind.Utc, found.ValidityStartDate.Kind);
+        Assert.Equal(DateTimeKind.Utc, found.ValidityEndDate.Kind);
+        Assert.Equal(DateTimeKind.Utc, found.RedeemedOn!.Value.Kind);
+    }
+
+    // Integration Test
+    [Fact]
     public async Task GetByIdAsync_WithNonExistingId_ReturnsNull()
     {
         await using var db = NewContext();

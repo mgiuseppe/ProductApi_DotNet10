@@ -1,6 +1,6 @@
 # 0008. Integration tests with Testcontainers
 
-- Status: Accepted
+- Status: Superseded by [0014](0014-integration-tests-with-pooled-databases.md)
 - Date: 2026-10-14
 
 ## Context

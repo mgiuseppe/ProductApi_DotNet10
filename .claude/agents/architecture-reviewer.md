@@ -16,7 +16,7 @@ Read `CLAUDE.md`, `docs/ARCHITECTURE.md` and every ADR in `docs/adr/` whose topi
 
 ## Checks
 
-1. **Dependency direction**: `Domain` references no other project and no EF, HTTP or infrastructure package (only `MediatR.Contracts`). `Application` never references the `Infrastructure` project or provider SDKs (OpenAI, Npgsql, MongoDB driver). Check `using` directives and `.csproj` files.
+1. **Dependency direction**: `Domain` references no other project and no EF, HTTP or infrastructure package (only `MediatR.Contracts`). `Application` never references the `Infrastructure` project or provider SDKs (OpenAI, SqlClient, MongoDB driver). Check `using` directives and `.csproj` files.
 2. **Domain**: state changes only through aggregate methods; no public setters; invariants enforced inside the aggregate and raised as `DomainException`; child entities changed only through the root; ids generated in the domain; no `DateTime.Now`.
 3. **Application**: command handlers coordinate (load, call domain, `SaveChangesAsync` once) and contain no business rules; query handlers use `IQueryContext`, not repositories; event handlers never call `SaveChanges`.
 4. **Infrastructure**: no business rules; new entities mapped with Fluent API configurations; schema changes come with a new migration; migrations already on `origin/main` are not edited.

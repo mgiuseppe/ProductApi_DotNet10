@@ -15,10 +15,10 @@ This solution contains a product / order manager sample api implemented to refre
     ```bash
     docker compose up -d
     ```
-    It starts Postgres (5432), MongoDB (27017) and the Aspire dashboard (UI 18888, OTLP 4317), then the `migrator` service applies the EF migrations and exits. The API is not started: it belongs to the `app` profile.
+    It starts SQL Server (1433), MongoDB (27017) and the Aspire dashboard (UI 18888, OTLP 4317), then the `migrator` service applies the EF migrations and exits. The API is not started: it belongs to the `app` profile.
 2. Run `src/Api` with F5 (Visual Studio / VS Code with C# Dev Kit, `http` profile) or `dotnet run --project src/Api`
     - API: http://localhost:5224, OpenAPI document at `/openapi/v1.json`
-    - `appsettings.Development.json` already points to the compose services (`localhost:5432`, `localhost:27017`) and sends telemetry to `http://localhost:4317`
+    - `appsettings.Development.json` already points to the compose services (`localhost:1433`, `localhost:27017`) and sends telemetry to `http://localhost:4317`
 3. Open the Aspire dashboard at http://localhost:18888 to see traces, metrics and logs
 
 When you add a migration, apply it from your machine (faster than rebuilding the migrator image):
@@ -40,7 +40,7 @@ docker compose --profile app up --build -d
 ### Ports and `.env`
 
 Host ports default to the ones above. To change them, copy `.env.example` to `.env` (gitignored) and edit it: Compose reads it automatically.
-If you change `POSTGRES_PORT`, `MONGO_PORT` or `OTLP_PORT`, update `src/Api/appsettings.Development.json` as well, otherwise the F5 API won't find them.
+If you change `SQLSERVER_PORT`, `MONGO_PORT` or `OTLP_PORT`, update `src/Api/appsettings.Development.json` as well, otherwise the F5 API won't find them.
 
 The order summary (`GET /orders/{id}/summary`) calls OpenAI. With F5 the key comes from user-secrets (`dotnet user-secrets set "OpenAI:ApiKey" "<key>" --project src/Api`); the containerized API can't see user-secrets, so set `OPENAI_API_KEY` in `.env`. Without a key everything else still works and only the summary endpoint fails.
 
@@ -48,7 +48,7 @@ The order summary (`GET /orders/{id}/summary`) calls OpenAI. With F5 the key com
 
 ```bash
 docker compose --profile app down     # stop and remove the containers (data is kept in volumes)
-docker compose --profile app down -v  # also delete the Postgres and Mongo data
+docker compose --profile app down -v  # also delete the SQL Server and Mongo data
 ```
 `--profile app` is needed to also remove the `api` container if it was started.
 
@@ -106,7 +106,7 @@ See [DomainEventsHandling](docs/DomainEventsHandling.md)
 
 ## Testing Strategy
 
-Infrastructure.Tests start a Postgres container with Testcontainers: Docker must be running.
+Infrastructure.Tests start a SQL Server container with Testcontainers (about 1.5 GB image, 2 GB of RAM): Docker must be running.
 
 See [Testing Strategy](docs/TestingStrategy.md)
 

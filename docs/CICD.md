@@ -37,7 +37,7 @@ The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in 
 | 1 | Restore and build | Warnings treated as errors, except where a known false positive is documented |
 | 2 | Format check | `dotnet format --verify-no-changes` |
 | 3 | Unit tests | `Domain.Tests`, `Application.Tests` |
-| 4 | Integration tests | `Infrastructure.Tests`: they start a PostgreSQL container, so the runner needs a Docker daemon (GitHub-hosted Ubuntu runners should have one) |
+| 4 | Integration tests | `Infrastructure.Tests`: they start a SQL Server container, so the runner needs a Docker daemon (GitHub-hosted Ubuntu runners should have one) |
 | 5 | Dependency vulnerabilities | NuGet audit (NU1902 and similar); `dotnet list package --vulnerable` |
 | 6 | Image build | `docker build` for the API image (`--target final`) and the migrator image (`--target migrator`), without pushing |
  
@@ -69,7 +69,7 @@ flowchart LR
 ## 5. Infrastructure
  
 - **Local:** Docker Compose (`docker compose up -d` for the infrastructure, `--profile app` for everything). Compose is not used in production.
-- **Target:** Azure Container Apps / App Service / AKS, with **managed** PostgreSQL and MongoDB-compatible services instead of containers.
+- **Target:** Azure Container Apps / App Service / AKS, with **managed** Azure SQL and MongoDB-compatible services instead of containers.
 - **Infrastructure as code:** Bicep. The pull request runs `bicep build` on modified .bicep files and a what-if is shown in the PR before approval (a preview of what will be changed). The reviewer can approve the PR (the PRD environment approval is in CD paragraph) and then deployment runs (You can also use a different repo for the bicep files).
 
 ## 6. Database migrations

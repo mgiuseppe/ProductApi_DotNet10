@@ -30,7 +30,7 @@ RUN dotnet publish src/Api/Api.csproj -c Release -o /app/publish --no-restore /p
 FROM build AS migrations-build
 RUN dotnet tool install dotnet-ef --version 10.0.12 --tool-path /tools
 # Creating the bundle runs Program.cs up to Build(): AddInfrastructure needs non-empty connection strings (never used here)
-RUN ConnectionStrings__DbConnection="Host=unused" ConnectionStrings__MongoDb="mongodb://unused/productapi" \
+RUN ConnectionStrings__DbConnection="Server=unused" ConnectionStrings__MongoDb="mongodb://unused/productapi" \
     /tools/dotnet-ef migrations bundle --project src/Infrastructure/Infrastructure.csproj --startup-project src/Api/Api.csproj \
     --configuration Release --output /app/efbundle
     
