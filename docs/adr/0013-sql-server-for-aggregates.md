@@ -17,7 +17,7 @@ The first cloud target is Azure. SQL Server is the Microsoft standard relational
 - The migration history restarts: `InitialCreate` is regenerated for SQL Server. A provider change is not backward compatible by nature: staying forward-only would mean keeping both databases running, which is not worth it. So it is treated as a one-time exception to [0010](0010-migrations-editable-until-pushed.md). The "shared migrations untouched" check of `/verify-and-commit` is expected to fail on this change only: the maintainer approves that push by hand, and the check is not changed or bypassed.
 
 ## Consequences
-- Same domain, application and API code; the changes are in Infrastructure (provider, conflict detection, UTC converter), the migration, the test database helper ([0014](0014-integration-tests-with-pooled-databases.md)) and Docker Compose.
+- Same domain, application and API code; the changes are in Infrastructure (provider, conflict detection, UTC converter), the migration, the test database helper ([TestingStrategy](../TestingStrategy.md)) and Docker Compose.
 - The SQL Server image is about 1.5 GB, needs about 2 GB of RAM and takes about 10 s to start: local setup and CI are heavier than with Postgres.
 - On Azure SQL serverless the first request after a pause can take up to about a minute.
 - Default collation is case-insensitive: string equality in queries ignores case (no current query depends on it).

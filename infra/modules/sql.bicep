@@ -1,4 +1,4 @@
-// Azure SQL with a SQL login and the free offer (ADR-0013, ADR-0016).
+// Azure SQL with a SQL login and the free offer (ADR-0013, ADR-0015).
 param serverName string
 param databaseName string
 param location string

@@ -1,4 +1,4 @@
-// Azure DocumentDB (MongoDB) free-tier cluster shared by the environments (ADR-0017).
+// Azure DocumentDB (MongoDB) free-tier cluster shared by the environments (ADR-0015).
 // Free tier: 32 GB, no Entra ID authentication, no backups, paused after 60 days without use.
 param name string
 param location string

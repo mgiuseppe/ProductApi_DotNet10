@@ -54,7 +54,7 @@ docker compose --profile app down -v  # also delete the SQL Server and Mongo dat
 
 ## Contributing: GitHub Flow
 
-`main` is protected: every change goes through a branch and a pull request, merged with squash ([ADR-0011](docs/adr/0011-github-flow.md), [ADR-0012](docs/adr/0012-squash-merge-only.md)).
+`main` is protected: every change goes through a branch and a pull request, merged with squash ([CONTRIBUTING](CONTRIBUTING.md)).
 
 Create the branch before starting the work. Commits go through Claude Code with `/verify-and-commit`, so that every commit passes the quality gate (format, build, tests, migration checks); when asked, the skill also pushes the branch and opens the pull request.
 

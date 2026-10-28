@@ -1,4 +1,4 @@
-// Key Vault of one environment with its connection strings (ADR-0016).
+// Key Vault of one environment with its connection strings (ADR-0015).
 // The Container App and the migrator job read them through their system-assigned identity (Key Vault Secrets User).
 param name string
 param location string

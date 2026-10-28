@@ -10,14 +10,14 @@ targetScope = 'subscription'
 @allowed(['staging', 'production'])
 param environmentName string
 
-@description('Azure region for every resource (ADR-0017: North Europe, free DocumentDB tier).')
+@description('Azure region for every resource (ADR-0015: North Europe, free DocumentDB tier).')
 param location string = 'northeurope'
 
 @description('Administrator login of the SQL server.')
 @minLength(1)
 param sqlAdminLogin string
 
-@description('Administrator password of the SQL server, from a GitHub secret (ADR-0016).')
+@description('Administrator password of the SQL server, from a GitHub secret (ADR-0015).')
 @secure()
 param sqlAdminPassword string
 
@@ -25,7 +25,7 @@ param sqlAdminPassword string
 @minLength(1)
 param mongoAdminUser string
 
-@description('Administrator password of the shared MongoDB cluster, from a GitHub secret (ADR-0017).')
+@description('Administrator password of the shared MongoDB cluster, from a GitHub secret (ADR-0015).')
 @secure()
 param mongoAdminPassword string
 
