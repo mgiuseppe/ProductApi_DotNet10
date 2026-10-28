@@ -10,7 +10,7 @@ Returns a string of at most ~5 sentences. 404 if the order does not exist.
 ```mermaid
 flowchart LR
   Endpoint --> |SummarizeOrderQuery| Handler[SummarizeOrderQueryHandler]
-  Handler --> |order + lines| Postgres
+  Handler --> |order + lines| SqlServer
   Handler --> |history entries| Mongo
   Handler --> |system + user prompt| IChatClient
   IChatClient --> OpenAI
@@ -59,7 +59,7 @@ The chat client is wrapped with `UseOpenTelemetry(sourceName: AITelemetry.Source
 See [Observability](Observability.md).
 
 ## Testing
-- `Infrastructure.Tests/Queries/OrderQueryHandlersTests.cs`: `SummarizeOrderQueryHandler` against a real Postgres (Testcontainers), with `IOrderHistoryLog` and `IChatClient` mocked. Checks the system/user messages, that the user prompt contains the order, its lines, enum names and the history entries, the `ChatOptions`, the returned text, and that a missing order never reaches the model.
+- `Infrastructure.Tests/Queries/OrderQueryHandlersTests.cs`: `SummarizeOrderQueryHandler` against a real SQL Server (Testcontainers), with `IOrderHistoryLog` and `IChatClient` mocked. Checks the system/user messages, that the user prompt contains the order, its lines, enum names and the history entries, the `ChatOptions`, the returned text, and that a missing order never reaches the model.
 
 No test calls the real model: answers are not deterministic and each call costs money. Evaluating the quality of the summaries would need a separate eval suite.
 

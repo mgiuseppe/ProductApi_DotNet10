@@ -16,9 +16,12 @@ dotnet ef database update --project src/Infrastructure --startup-project src/Api
 - Generate next migrations
 
 ## Persistence
-- Postgres (Npgsql) with snake_case names (`EFCore.NamingConventions`): raw SQL such as check constraints must use the snake_case column names (`discount_amount >= 0`).
-- `decimal` is `numeric(18,2)`, `Guid` is `uuid`, `DateTime` is `timestamptz`: Npgsql rejects a non-UTC `DateTime`, so the domain normalizes incoming dates to UTC (`Voucher.Create`). Postgres keeps microseconds, not 100ns ticks.
-- Unique violations (SqlState 23505, e.g. the same voucher redeemed by two orders concurrently) become a `ConflictException` (409) in `AppDbContext.SaveChangesAsync`.
+- SQL Server (Azure SQL in the cloud) with snake_case names (`EFCore.NamingConventions`): raw SQL such as check constraints must use the snake_case column names (`discount_amount >= 0`).
+- `decimal` is `decimal(18,2)`, `Guid` is `uniqueidentifier`, `DateTime` is `datetime2`: it has no time zone, so the domain normalizes incoming dates to UTC (`Voucher.Create`) and a converter in `AppDbContext.ConfigureConventions` marks every date read back as UTC.
+- Strings without a max length become `nvarchar(max)`: give enum-as-string columns a max length (`orders.status`).
+- Default collation is case-insensitive: string equality in LINQ ignores case.
+- `EnableRetryOnFailure` retries transient errors (Azure SQL serverless resuming from a pause). A transaction opened by our code would need `Database.CreateExecutionStrategy()`; none exists today.
+- Unique violations (errors 2601/2627, e.g. the same voucher redeemed by two orders concurrently) become a `ConflictException` (409) in `AppDbContext.SaveChangesAsync`.
 - Ids are generated in the domain (`ValueGeneratedNever`).
 
 ## Migrations
@@ -59,7 +62,7 @@ A reference, not a procedure: in this project they are allowed in a single relea
 | Unique index or constraint (`unique: true`, `AddUniqueConstraint`) | Fails on existing duplicates; the previous version may insert duplicates. In this project `AppDbContext` maps **every** unique violation to the voucher `ConflictException` | Check for duplicates first; revisit the `ConflictException` mapping |
 | Foreign key or check constraint (`AddForeignKey`, `AddCheckConstraint`) | Fails on existing rows that violate it; the previous version may write violating rows | Clean the data first; add the constraint when every running version respects it |
 | `migrationBuilder.Sql(...)` with `UPDATE`, `DELETE` or DDL | Long locks on large tables, no automatic `Down`, effects outside what EF tracks | Keep it idempotent, batch large updates, review the generated SQL with `dotnet ef migrations script` |
-| Index on a large table | Postgres `CREATE INDEX` blocks writes; `CONCURRENTLY` cannot run inside the migration transaction | Separate migration with `migrationBuilder.Sql("CREATE INDEX CONCURRENTLY ...", suppressTransaction: true)` |
+| Index on a large table | `CREATE INDEX` blocks writes while it builds | `migrationBuilder.Sql("CREATE INDEX ... WITH (ONLINE = ON)")`, available on Azure SQL (and SQL Server Enterprise/Developer) |
 | MongoDB document shape (outside EF): renaming `OrderHistoryEntry` types, the `type` discriminator or fields | Existing documents no longer deserialize; there are no migrations to catch it | Keep reading the old shape (aliases, optional fields) or migrate the documents with a script |
 
 Safe in general: `CreateTable`, `AddColumn` nullable or with a default, non-unique index on a small table, dropping an index the code does not rely on.

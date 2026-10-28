@@ -20,13 +20,15 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 | [0003](0003-cqrs-with-mediatr.md) | CQRS with MediatR | Accepted |
 | [0004](0004-repositories-and-unit-of-work.md) | Repositories and unit of work | Accepted |
 | [0005](0005-domain-events-before-commit.md) | Domain events dispatched before the commit | Accepted |
-| [0006](0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history | Accepted |
+| [0006](0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history | Superseded by 0013 |
 | [0007](0007-ichatclient-without-own-port.md) | `IChatClient` without a port of our own | Accepted |
-| [0008](0008-integration-tests-with-testcontainers.md) | Integration tests with Testcontainers | Accepted |
+| [0008](0008-integration-tests-with-testcontainers.md) | Integration tests with Testcontainers | Superseded by 0014 |
 | [0009](0009-migrations-with-migrator-container.md) | Migrations applied by a migrator container | Accepted |
 | [0010](0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after | Accepted |
 | [0011](0011-github-flow.md) | GitHub Flow with a protected `main` | Accepted |
 | [0012](0012-squash-merge-only.md) | Squash merge only | Accepted |
+| [0013](0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history | Accepted |
+| [0014](0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases | Accepted |
 
 ## Template
 

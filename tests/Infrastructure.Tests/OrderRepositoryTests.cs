@@ -87,7 +87,7 @@ public class OrderRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task Update_ConfirmWithVoucher_PersistsVoucherIdAndDiscount()
     {
-        var now = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc); // fixed: Postgres keeps microseconds, DateTime.UtcNow has 100ns ticks and would not round-trip
+        var now = new DateTime(2026, 10, 15, 12, 0, 0, DateTimeKind.Utc); // fixed: a deterministic test does not depend on the clock
         var voucher = Voucher.Create(now.AddDays(-1), now.AddDays(1), 9.90m);
         var order = Order.Create().AddLine(Guid.NewGuid(), "Keyboard", 49.90m, 1);
 

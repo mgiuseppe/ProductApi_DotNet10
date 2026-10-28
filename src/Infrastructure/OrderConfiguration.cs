@@ -12,7 +12,7 @@ internal class OrderConfiguration : IEntityTypeConfiguration<Order>
     {
         builder.HasKey(o => o.Id);
         builder.Property(o => o.Id).ValueGeneratedNever(); // Useful because I generate the Guid in the app and not on DB, Otherwise EF could try to update an non-existant item on the db, this happens with sub-aggregates like OrderLine
-        builder.Property(o => o.Status).HasConversion<string>(); // enum as string is more readable in DB 
+        builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20); // enum as string is more readable in DB; bounded, otherwise SQL Server uses nvarchar(max)
         builder.Property(o => o.VoucherId).IsRequired(false); // Nullable because order may not have a voucher applied
         builder.HasOne<Voucher>()
                 .WithOne()

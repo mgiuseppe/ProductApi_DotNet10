@@ -85,7 +85,8 @@ public static class DependencyInjection
     internal static TBuilder UseAppDatabase<TBuilder>(this TBuilder options, string connectionString)
         where TBuilder : DbContextOptionsBuilder
     {
-        options.UseNpgsql(connectionString)
+        // Retries transient errors, e.g. while a paused Azure SQL serverless database resumes
+        options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure())
                .UseSnakeCaseNamingConvention(); // order_lines.unit_price_snapshot: no quoting needed in raw SQL
         return options;
     }
