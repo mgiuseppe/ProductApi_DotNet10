@@ -1,6 +1,6 @@
 # 0008. Integration tests with Testcontainers
 
-- Status: Superseded by [0014](0014-integration-tests-with-pooled-databases.md)
+- Status: Superseded by [0013](0013-sql-server-for-aggregates.md) (how the SQL Server tests work: [TestingStrategy](../TestingStrategy.md))
 - Date: 2026-10-14
 
 ## Context

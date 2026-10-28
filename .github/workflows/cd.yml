@@ -1,0 +1,102 @@
+# Delivery on every merge to main (docs/CICD.md, section 3): build the images once, deploy the shared stack,
+# staging, then production after the manual approval of the "production" environment. Same images everywhere.
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      images-only:
+        description: Only build and push the images (first run, before making the GHCR packages public)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd
+  cancel-in-progress: false # never stop a deployment halfway
+
+jobs:
+  images:
+    # Off until the one-time Azure setup is done (SETUP_CICD_ONETIME.md): repository variable CD_ENABLED=true
+    if: vars.CD_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      api: ${{ steps.names.outputs.api }}
+      migrator: ${{ steps.names.outputs.migrator }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image names (tag = commit SHA)
+        id: names
+        run: |
+          prefix="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/productapi"
+          echo "api=$prefix-api:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "migrator=$prefix-migrator:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        run: |
+          docker build --target final -t "${{ steps.names.outputs.api }}" .
+          docker build --target migrator -t "${{ steps.names.outputs.migrator }}" .
+          docker push "${{ steps.names.outputs.api }}"
+          docker push "${{ steps.names.outputs.migrator }}"
+
+  # The free MongoDB cluster shared by the environments (ADR-0015): idempotent, recreated after a full teardown
+  shared:
+    if: vars.CD_ENABLED == 'true' && !inputs.images-only
+    runs-on: ubuntu-latest
+    environment: staging # deployed with the staging identity
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Shared stack
+        env:
+          MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
+        run: |
+          az stack sub create --name productapi-shared --location northeurope \
+            --template-file infra/shared.bicep --parameters infra/shared.bicepparam \
+            --action-on-unmanage detachAll --deny-settings-mode denyDelete --yes
+
+  staging:
+    needs: [images, shared]
+    if: ${{ !inputs.images-only }}
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: staging
+      api-image: ${{ needs.images.outputs.api }}
+      migrator-image: ${{ needs.images.outputs.migrator }}
+    secrets: inherit
+
+  production:
+    needs: [images, staging]
+    uses: ./.github/workflows/deploy.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: production # waits for the required reviewer
+      api-image: ${{ needs.images.outputs.api }}
+      migrator-image: ${{ needs.images.outputs.migrator }}
+    secrets: inherit

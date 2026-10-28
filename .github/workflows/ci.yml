@@ -1,0 +1,91 @@
+# Pull request checks: the same gate as /verify-and-commit (docs/CICD.md, section 2).
+# Once green on main, the job names become required checks in the ruleset (SETUP_CICD_ONETIME.md).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the migration check compares with origin/main
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore ProductApi.slnx
+
+      - name: Vulnerable packages
+        run: |
+          dotnet list ProductApi.slnx package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then exit 1; fi
+
+      - name: Format
+        run: dotnet format ProductApi.slnx --verify-no-changes --no-restore
+
+      - name: Build (warnings as errors)
+        run: dotnet build ProductApi.slnx -c Release -warnaserror --no-restore
+
+      - name: Unit tests
+        run: |
+          dotnet test tests/Domain.Tests -c Release --no-build
+          dotnet test tests/Application.Tests -c Release --no-build
+
+      - name: Integration tests (SQL Server via Testcontainers, Docker is available on the runner)
+        run: dotnet test tests/Infrastructure.Tests -c Release --no-build
+
+      - name: Shared migrations untouched (ADR-0010)
+        if: github.event_name == 'pull_request'
+        run: |
+          changed=$(git diff --name-status origin/main...HEAD -- src/Infrastructure/Migrations/ \
+            | grep -v '^A' | grep -v 'AppDbContextModelSnapshot.cs$' || true)
+          if [ -n "$changed" ]; then
+            echo "Migrations already on main were changed: fix with a new migration instead."
+            echo "$changed"
+            exit 1
+          fi
+
+      - name: No forgotten migration
+        env:
+          # The design-time host builds the app: connection strings must be non-empty (never used here)
+          ConnectionStrings__DbConnection: Server=unused
+          ConnectionStrings__MongoDb: mongodb://unused/productapi
+        run: |
+          dotnet tool install --global dotnet-ef --version 10.0.12
+          dotnet ef migrations has-pending-model-changes --project src/Infrastructure --startup-project src/Api
+
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the API image
+        run: docker build --target final -t productapi-api:ci .
+      - name: Build the migrator image
+        run: docker build --target migrator -t productapi-migrator:ci .
+
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint and build (rules in infra/bicepconfig.json)
+        run: |
+          az bicep install
+          for file in infra/main.bicep infra/shared.bicep; do
+            az bicep lint --file "$file"
+            az bicep build --file "$file" --stdout > /dev/null
+          done

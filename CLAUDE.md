@@ -45,9 +45,9 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 
 ## Workflow rules
 
-- GitHub Flow ([ADR-0011](docs/adr/0011-github-flow.md)): never commit or push on `main`. Work on a short-lived branch or worktree, open a pull request, merge with squash ([ADR-0012](docs/adr/0012-squash-merge-only.md)). Keep pull requests small; formatting-only changes get their own pull request.
+- GitHub Flow ([CONTRIBUTING](CONTRIBUTING.md)): never commit or push on `main`. Work on a short-lived branch or worktree, open a pull request, merge with squash. Keep pull requests small; formatting-only changes get their own pull request.
 - Before every commit run the format gate and the unit tests; before every push also `Infrastructure.Tests`. Use the `/verify-and-commit` skill. Do not commit if anything fails, and do not skip checks with `--no-verify`.
-- A change to layers, persistence, messaging, transaction boundaries or external integrations is an architectural decision: write a new ADR in `docs/adr/` (template in its README) before or with the code, and update `docs/ARCHITECTURE.md`. Never rewrite an accepted ADR: supersede it with a new one.
+- A change to layers, persistence, messaging, transaction boundaries or external integrations is an architectural decision: write a new ADR in `docs/adr/` (template in its README) before or with the code, and update `docs/ARCHITECTURE.md`. Workflow rules and implementation details are not ADRs: they go in the topic documents. Never rewrite an accepted ADR: supersede it with a new one.
 - After a non-trivial change, run the `architecture-reviewer` subagent on the diff.
 - Migrations: edit freely until pushed; once on `origin/main` they are forward-only (never edited, `Down` never run on a shared database). No expand/contract: breaking changes go out in one release; the risky operations are listed in `docs/EFCore.md` as a reference ([ADR-0010](docs/adr/0010-migrations-editable-until-pushed.md)).
 - Keep docs in English; commit messages short and imperative.

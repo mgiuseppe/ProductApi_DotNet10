@@ -1,0 +1,99 @@
+# Deploys one environment (called by cd.yml): infrastructure, migrations, then the API, then a smoke test.
+# The same steps run for staging and production; only the GitHub environment (identity, approval) changes.
+name: Deploy environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      api-image:
+        type: string
+        required: true
+      migrator-image:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # OIDC sign-in to Azure
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      STACK: productapi-${{ inputs.environment }}
+      RESOURCE_GROUP: rg-productapi-${{ inputs.environment }}
+      APP: ca-productapi-${{ inputs.environment }}
+      JOB: caj-productapi-mig-${{ inputs.environment }}
+      NEW_API_IMAGE: ${{ inputs.api-image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Azure CLI extensions
+        run: az config set extension.use_dynamic_install=yes_without_prompt
+
+      # The stack deploys the API with the image already running, so the new code never starts before the
+      # migrator. On the first deployment there is none: the new image starts, not ready until migrations run.
+      - name: API image currently running
+        run: |
+          current=$(az containerapp show -g "$RESOURCE_GROUP" -n "$APP" \
+            --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)
+          echo "API_IMAGE=${current:-$NEW_API_IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Infrastructure (deployment stack, never deletes, ADR-0015)
+        env:
+          MIGRATOR_IMAGE: ${{ inputs.migrator-image }}
+          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
+        # On a fresh environment the Key Vault role assignment may not have propagated when the app checks its
+        # secret references: retry once (the stack is idempotent)
+        run: |
+          deploy() {
+            az stack sub create --name "$STACK" --location northeurope \
+              --template-file infra/main.bicep --parameters "infra/${{ inputs.environment }}.bicepparam" \
+              --action-on-unmanage detachAll --deny-settings-mode denyDelete --yes
+          }
+          deploy || { echo "Retrying in 60 s"; sleep 60; deploy; }
+
+      - name: Migrations (the API is not updated if they fail)
+        run: |
+          execution=$(az containerapp job start -g "$RESOURCE_GROUP" -n "$JOB" --query name -o tsv)
+          echo "Execution: $execution"
+          for _ in $(seq 60); do
+            status=$(az containerapp job execution show -g "$RESOURCE_GROUP" -n "$JOB" \
+              --job-execution-name "$execution" --query properties.status -o tsv)
+            echo "Status: $status"
+            case "$status" in
+              Succeeded) exit 0 ;;
+              Failed|Stopped|Degraded) exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "Timed out waiting for the migrator"
+          exit 1
+
+      - name: API
+        run: az containerapp update -g "$RESOURCE_GROUP" -n "$APP" --image "$NEW_API_IMAGE"
+
+      # Cold starts add up: the app scales from zero and the serverless database may be paused (up to a minute)
+      - name: Smoke test
+        run: |
+          fqdn=$(az containerapp show -g "$RESOURCE_GROUP" -n "$APP" --query properties.configuration.ingress.fqdn -o tsv)
+          for _ in $(seq 30); do
+            if curl -fsS "https://$fqdn/products?page=1&pageSize=1"; then
+              echo
+              echo "OK: https://$fqdn"
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1

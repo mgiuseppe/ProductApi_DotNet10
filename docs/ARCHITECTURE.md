@@ -99,12 +99,12 @@ OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORT
 | `Application.Tests` | Command and event handlers | Moq |
 | `Infrastructure.Tests` | Repositories, interceptor, **query handlers** | SQL Server via Testcontainers, a pool of migrated databases emptied with Respawn after each test |
 
-See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [TestingStrategy](TestingStrategy.md).
+See [TestingStrategy](TestingStrategy.md).
 
 ## Runtime and delivery
 
 - Local: `docker compose up -d` for the infrastructure, `--profile app` to also run the containerized API.
-- CI/CD is designed but not implemented ([CICD](CICD.md)).
+- CI/CD is designed but not implemented ([CICD](CICD.md)). Azure infrastructure is Bicep in `infra/` (Container App and migrator job still to come), deployed as deployment stacks ([ADR-0015](adr/0015-azure-infrastructure.md)).
 
 ## Known limits
 
@@ -124,10 +124,8 @@ See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [Testing
 | [0005](adr/0005-domain-events-before-commit.md) | Domain events dispatched before the commit by an EF interceptor, no outbox |
 | [0006](adr/0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history (superseded by 0013) |
 | [0007](adr/0007-ichatclient-without-own-port.md) | `IChatClient` used directly, no port of our own |
-| [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers (superseded by 0014) |
+| [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers (superseded by 0013) |
 | [0009](adr/0009-migrations-with-migrator-container.md) | Migrations applied by a dedicated migrator container |
 | [0010](adr/0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after |
-| [0011](adr/0011-github-flow.md) | GitHub Flow with a protected `main` |
-| [0012](adr/0012-squash-merge-only.md) | Squash merge only |
 | [0013](adr/0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history |
-| [0014](adr/0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases |
+| [0015](adr/0015-azure-infrastructure.md) | Azure: Bicep deployment stacks that never delete on deploy, secrets in a Key Vault per environment, one free MongoDB cluster shared by the environments |

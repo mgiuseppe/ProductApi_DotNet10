@@ -10,6 +10,8 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 - Status: `Proposed`, `Accepted`, `Superseded by NNNN`, `Deprecated`.
 - An accepted ADR is not rewritten. If the decision changes, write a new ADR that supersedes it and update the old status line.
 - Write the ADR before or together with the code that implements it, and update `ARCHITECTURE.md`.
+- Only for decisions that change the structure of the system or are expensive to reverse. Workflow rules and implementation details go in the topic documents (`CONTRIBUTING.md`, `docs/CICD.md`, `docs/TestingStrategy.md`).
+- Numbers 0011, 0012, 0014, 0016 and 0017 are not used: on 2026-10-28 the GitHub Flow and squash merge ADRs moved to `CONTRIBUTING.md`, the integration test details to `TestingStrategy.md`, and three Azure ADRs were merged into 0015.
 
 ## Index
 
@@ -22,13 +24,11 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 | [0005](0005-domain-events-before-commit.md) | Domain events dispatched before the commit | Accepted |
 | [0006](0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history | Superseded by 0013 |
 | [0007](0007-ichatclient-without-own-port.md) | `IChatClient` without a port of our own | Accepted |
-| [0008](0008-integration-tests-with-testcontainers.md) | Integration tests with Testcontainers | Superseded by 0014 |
+| [0008](0008-integration-tests-with-testcontainers.md) | Integration tests with Testcontainers | Superseded by 0013 |
 | [0009](0009-migrations-with-migrator-container.md) | Migrations applied by a migrator container | Accepted |
 | [0010](0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after | Accepted |
-| [0011](0011-github-flow.md) | GitHub Flow with a protected `main` | Accepted |
-| [0012](0012-squash-merge-only.md) | Squash merge only | Accepted |
 | [0013](0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history | Accepted |
-| [0014](0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases | Accepted |
+| [0015](0015-azure-infrastructure.md) | Azure infrastructure: Bicep stacks, secrets in Key Vault, shared MongoDB cluster | Accepted |
 
 ## Template
 

@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Bicep build output: compiled parameter files can contain secret values (ADR-0017)
+infra/**/*.json
+!infra/bicepconfig.json
