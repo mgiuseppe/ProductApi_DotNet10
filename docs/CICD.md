@@ -12,7 +12,7 @@ Cicd · MD
 - **Immutable tags.** Images are tagged with the commit SHA. `latest` is never used for a deployment.
 - **The same checks locally and in CI,** so that what passes on my machine passes in the pipeline.
 - **Least privilege, no stored secrets.** The pipeline authenticates to the cloud with short-lived federated credentials.
-- **Migrations should be forward-only and backward compatible.**
+- **Migrations are forward-only once merged** ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)).
 
 ## 1. Feedback before pushing
  
@@ -63,6 +63,7 @@ flowchart LR
 - **GitHub Environments** (`staging`, `production`) with required reviewers for production.
 - **OIDC federated credentials** instead of stored secrets: Microsoft recommends OpenID Connect for GitHub Actions because no persistent credential can leak. One identity **per environment**, with minimal RBAC, so a staging run can never touch production.
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
+- **Database access:** the API and the migrator reach Azure SQL with their own system-assigned managed identities and Entra authentication; SQL logins are disabled. The pipeline identity is the Entra admin and creates the database users after the infrastructure deployment ([ADR-0016](adr/0016-azure-sql-with-managed-identity.md)).
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
 - **Telemetry:** OpenTelemetry exports to Azure Monitor / Application Insights in production. The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
@@ -70,12 +71,16 @@ flowchart LR
  
 - **Local:** Docker Compose (`docker compose up -d` for the infrastructure, `--profile app` for everything). Compose is not used in production.
 - **Target:** Azure Container Apps / App Service / AKS, with **managed** Azure SQL and MongoDB-compatible services instead of containers.
-- **Infrastructure as code:** Bicep. The pull request runs `bicep build` on modified .bicep files and a what-if is shown in the PR before approval (a preview of what will be changed). The reviewer can approve the PR (the PRD environment approval is in CD paragraph) and then deployment runs (You can also use a different repo for the bicep files).
+- **Infrastructure as code:** Bicep in `infra/`, deployed as one **deployment stack** per environment with the same settings everywhere ([ADR-0015](adr/0015-bicep-with-deployment-stacks.md)):
+  - `infra/main.bicep` at subscription scope creates the resource group and calls the modules in `infra/modules/`; `infra/<environment>.bicepparam` holds what differs between environments.
+  - Deploy: `az stack sub create --action-on-unmanage detachAll --deny-settings-mode denyDelete`. A deployment never deletes resources, and resources of the stack cannot be deleted by hand.
+  - Teardown: `az stack sub delete --action-on-unmanage deleteAll`, a separate manual operation and the only one that deletes resources.
+  - The pull request builds and lints the Bicep files (`infra/bicepconfig.json`) and shows a preview of the changes before approval.
 
 ## 6. Database migrations
  
 - The **migrator** image (an EF Core migrations bundle) runs **before** the new application version and exits. The API never applies migrations on startup.
-- During a rolling update the old and the new version run side by side on the same schema, so every migration must be **backward compatible**: add in one release, remove in a later one (expand/contract). Forward-only: a mistake is fixed with a new migration.
+- Forward-only once on `main`: a mistake is fixed with a new migration. No expand/contract: a breaking change goes out in one release with a short downtime ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)).
 - MongoDB indexes are created by the application at startup, idempotently; there is no init script.
 - Production deployments should treat a failing migrator as a stop: the application is not updated.
 
@@ -87,7 +92,7 @@ flowchart LR
 
 ## Not covered
  
-- Pipeline files (`.github/workflows/*.yml`) and Bicep templates: not written.
+- Pipeline files (`.github/workflows/*.yml`) and Bicep templates: not written yet.
 - Cloud costs, backups and retention of the managed databases.
 - Image vulnerability scanning, SBOM (an inventory of the components in the image) and signing (to verify that an image comes from the pipeline and was not altered).
 - Trace sampling and alerting.

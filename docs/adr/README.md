@@ -29,6 +29,8 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 | [0012](0012-squash-merge-only.md) | Squash merge only | Accepted |
 | [0013](0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history | Accepted |
 | [0014](0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases | Accepted |
+| [0015](0015-bicep-with-deployment-stacks.md) | Infrastructure as code with Bicep and deployment stacks | Accepted |
+| [0016](0016-azure-sql-with-managed-identity.md) | Azure SQL authentication with managed identities | Accepted |
 
 ## Template
 

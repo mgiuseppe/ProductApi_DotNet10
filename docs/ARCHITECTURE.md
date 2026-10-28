@@ -104,7 +104,7 @@ See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [Testing
 ## Runtime and delivery
 
 - Local: `docker compose up -d` for the infrastructure, `--profile app` to also run the containerized API.
-- CI/CD is designed but not implemented ([CICD](CICD.md)).
+- CI/CD is designed but not implemented ([CICD](CICD.md)). Azure infrastructure will be Bicep in `infra/`, deployed as deployment stacks ([ADR-0015](adr/0015-bicep-with-deployment-stacks.md)).
 
 ## Known limits
 
@@ -132,3 +132,5 @@ See [ADR-0014](adr/0014-integration-tests-with-pooled-databases.md) and [Testing
 | [0012](adr/0012-squash-merge-only.md) | Squash merge only |
 | [0013](adr/0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history |
 | [0014](adr/0014-integration-tests-with-pooled-databases.md) | Integration tests on SQL Server with pooled databases |
+| [0015](adr/0015-bicep-with-deployment-stacks.md) | Bicep in `infra/`, one deployment stack per environment that never deletes on deploy |
+| [0016](adr/0016-azure-sql-with-managed-identity.md) | Azure SQL with Entra-only authentication and one managed identity each for the API and the migrator |
