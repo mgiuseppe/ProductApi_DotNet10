@@ -89,7 +89,7 @@ flowchart LR
 ## 7. Health and rollout
  
 - `/alive` is the liveness check (the process is up) and `/health` the full one (database included). The platform probes use them.
-- Today the health endpoints are mapped only in `Development`. Production probes rely on them, so they must be mapped in production too, after reviewing what they expose (README TODO).
+- The health endpoints answer only on a dedicated port (8081), in every environment: the probes target that port, the public ingress exposes only 8080 ([Observability](Observability.md#health-checks)). The probe interval matters: while a replica runs, every readiness probe queries the serverless SQL database and keeps it awake.
 - Rollout creates a new revision of the application and shifts traffic to it; rollback shifts it back or redeploys the previous tag, the exact mechanism is up to the chosen platform.
 
 ## Not covered
