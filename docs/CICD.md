@@ -3,7 +3,7 @@
 Cicd · MD
 # CI/CD
  
-> **Status: design only, not implemented.** This repository has no pipeline yet.
+> **Status: partly implemented.** The Bicep templates for the infrastructure exist in `infra/` (no Container App or migrator job yet); the pipeline does not.
 > This document records how I would build, test and deploy the project, and why.
  
 ## Principles
@@ -75,7 +75,8 @@ flowchart LR
   - `infra/main.bicep` at subscription scope creates the resource group and calls the modules in `infra/modules/`; `infra/<environment>.bicepparam` holds what differs between environments.
   - Deploy: `az stack sub create --action-on-unmanage detachAll --deny-settings-mode denyDelete`. A deployment never deletes resources, and resources of the stack cannot be deleted by hand.
   - Teardown: `az stack sub delete --action-on-unmanage deleteAll`, a separate manual operation and the only one that deletes resources.
-  - The pull request builds and lints the Bicep files (`infra/bicepconfig.json`) and shows a preview of the changes before approval.
+  - A third stack, `productapi-shared`, owns the free DocumentDB cluster used by both environments, one database each ([ADR-0017](adr/0017-shared-free-mongodb-cluster.md)). Everything runs in North Europe.
+  - The pull request builds and lints the `.bicep` files (`infra/bicepconfig.json`) and shows a preview of the changes before approval. The `.bicepparam` files read pipeline values with `readEnvironmentVariable` and compile only inside a GitHub environment that provides them.
 
 ## 6. Database migrations
  
@@ -92,7 +93,7 @@ flowchart LR
 
 ## Not covered
  
-- Pipeline files (`.github/workflows/*.yml`) and Bicep templates: not written yet.
+- Pipeline files (`.github/workflows/*.yml`): not written yet. Bicep: infrastructure only, the Container App and the migrator job are still missing.
 - Cloud costs, backups and retention of the managed databases.
 - Image vulnerability scanning, SBOM (an inventory of the components in the image) and signing (to verify that an image comes from the pipeline and was not altered).
 - Trace sampling and alerting.

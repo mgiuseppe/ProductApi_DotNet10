@@ -23,6 +23,8 @@ In Azure the API and the migrator connect to Azure SQL ([0013](0013-sql-server-f
 - The pipeline must reach the server to create the users: GitHub-hosted runners have changing IP addresses, so the step adds a firewall rule for the runner IP and removes it at the end (also on failure).
 - The pipeline identity is database admin: who can run the production workflow can do anything on the production database. Mitigated by the manual approval of the `production` environment.
 - `Microsoft.Data.SqlClient` brings `Azure.Identity` (already a dependency today).
+- To create users for other identities, the SQL server resolves them in Entra ID: the server gets a system-assigned identity, which may need the *Directory Readers* role (granted once per tenant, by a tenant admin). To verify on the first deployment whether `CREATE USER ... WITH OBJECT_ID` makes it unnecessary.
+- The firewall allows Azure services (`0.0.0.0`): any Azure-hosted client, in any tenant, can reach the server. Entra-only authentication is what protects it.
 
 ## Alternatives considered
 - **SQL login with the password in a secret store** (Key Vault or Container Apps secrets): familiar, but a credential to protect and rotate, and SQL authentication stays enabled.
