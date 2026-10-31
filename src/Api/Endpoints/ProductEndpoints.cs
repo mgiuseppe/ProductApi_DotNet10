@@ -1,7 +1,5 @@
 using Api.Requests;
-using Application.Common.Exceptions;
 using Application.Products;
-using Domain.Exceptions;
 using MediatR;
 
 namespace Api.Endpoints;
