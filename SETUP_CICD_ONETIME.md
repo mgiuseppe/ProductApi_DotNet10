@@ -1,21 +1,10 @@
-# One-time CI/CD setup
+# One-time CD setup
 
-Steps done once by hand, by a repository and Azure subscription admin. Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](docs/CICD.md) and [ADR-0015](docs/adr/0015-azure-infrastructure.md).
+Steps done once by hand, by a repository and Azure subscription admin, before the first deployment. The GitHub configuration of the CI (rulesets, repository settings) is in [MAINTAINING](MAINTAINING.md). Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](docs/CICD.md) and [ADR-0015](docs/adr/0015-azure-infrastructure.md).
 
 Tools: GitHub CLI (`gh auth login`, check with `gh auth status`) and Azure CLI (`az login`).
 
-## 1. GitHub repository
-
-The protection of `main` is versioned in `.github/rulesets/main.json`. GitHub does not read that file by itself: apply it once.
-
-```bash
-gh api --method POST repos/mgiuseppe/ProductApi_DotNet10/rulesets --input .github/rulesets/main.json
-gh repo edit mgiuseppe/ProductApi_DotNet10 --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false --delete-branch-on-merge
-```
-
-To change the protection, edit the file and update the existing ruleset: find its id with `gh api repos/mgiuseppe/ProductApi_DotNet10/rulesets`, then `gh api --method PUT repos/mgiuseppe/ProductApi_DotNet10/rulesets/<id> --input .github/rulesets/main.json`. Changes made in the GitHub UI are not written back to the file.
-
-## 2. Azure subscription
+## 1. Azure subscription
 
 Register the resource providers the templates use (once per subscription):
 
@@ -58,7 +47,7 @@ The roles are at subscription scope because the stacks create their resource gro
 
 Optional but recommended: a budget on the subscription with alerts (Cost Management, for example 1 EUR with alerts at 50% and 100%). Budgets only warn, they never stop spending.
 
-## 3. GitHub environments, variables and secrets
+## 2. GitHub environments, variables and secrets
 
 ```bash
 REPO=mgiuseppe/ProductApi_DotNet10
@@ -81,7 +70,7 @@ gh secret set SQL_ADMIN_PASSWORD --repo "$REPO"
 gh secret set MONGO_ADMIN_PASSWORD --repo "$REPO"
 ```
 
-## 4. First deployment
+## 3. First deployment
 
 1. Turn CD on: `gh variable set CD_ENABLED --repo mgiuseppe/ProductApi_DotNet10 --body true`.
 2. Run CD with **images only** (Actions → CD → Run workflow → "Only build and push the images"), so the GHCR packages exist.
@@ -90,7 +79,3 @@ gh secret set MONGO_ADMIN_PASSWORD --repo "$REPO"
 5. Check once that each environment uses its own MongoDB database: the connection string in the Key Vault must end with `/productapi-staging?...` (or `-production`). Bicep builds it from Azure's template; if that format changes, the database name falls back to `productapi`, shared by both.
 
 To delete everything: Actions → Teardown → `everything` (type it twice).
-
-## 5. After the first green CI run
-
-Add the CI jobs (`build-and-test`, `images`, `bicep`) as required status checks in `.github/rulesets/main.json`, update the ruleset (step 1) and enable auto-merge on the repository (`gh repo edit --enable-auto-merge`).

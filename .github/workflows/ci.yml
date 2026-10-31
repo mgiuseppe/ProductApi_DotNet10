@@ -1,5 +1,5 @@
-# Pull request checks: the same gate as /verify-and-commit (docs/CICD.md, section 2).
-# Once green on main, the job names become required checks in the ruleset (SETUP_CICD_ONETIME.md).
+# Pull request gates (docs/CICD.md, section 2): the same checks as /verify-and-commit, plus security scans.
+# build-and-test, images, bicep and dependency-review are required checks (ruleset main-quality-gates); psrule is informational.
 name: CI
 
 on:
@@ -27,13 +27,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # Also the vulnerable packages check: NuGet audit reports direct and transitive packages with known
+      # vulnerabilities (NU1901-NU1904) as warnings, from severity low (default NuGetAuditLevel), and the
+      # build below replays them as errors (-warnaserror)
       - name: Restore
         run: dotnet restore ProductApi.slnx
-
-      - name: Vulnerable packages
-        run: |
-          dotnet list ProductApi.slnx package --vulnerable --include-transitive | tee vulnerable.txt
-          if grep -q "has the following vulnerable packages" vulnerable.txt; then exit 1; fi
 
       - name: Format
         run: dotnet format ProductApi.slnx --verify-no-changes --no-restore
@@ -77,6 +75,22 @@ jobs:
         run: docker build --target final -t productapi-api:ci .
       - name: Build the migrator image
         run: docker build --target migrator -t productapi-migrator:ci .
+      # Fails only on critical vulnerabilities that have a fix: "high" on base images would mostly be noise
+      - name: Scan the API image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: productapi-api:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the migrator image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: productapi-migrator:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true # installed by the previous step
 
   bicep:
     runs-on: ubuntu-latest
@@ -89,3 +103,31 @@ jobs:
             az bicep lint --file "$file"
             az bicep build --file "$file" --stdout > /dev/null
           done
+
+  # Blocks a pull request that adds a dependency with a known high or critical vulnerability
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: high
+
+  # Well-Architected rules on the Bicep templates: informational only, findings never block a merge.
+  # Some are accepted trade-offs (public network access, no MongoDB backups, ADR-0015).
+  psrule:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      # The parameter files read pipeline values: placeholders are enough to expand the templates
+      SQL_ADMIN_PASSWORD: placeholder
+      MONGO_ADMIN_PASSWORD: placeholder
+      API_IMAGE: ghcr.io/placeholder/api:0
+      MIGRATOR_IMAGE: ghcr.io/placeholder/migrator:0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: microsoft/ps-rule@v2.9.0
+        with:
+          modules: PSRule.Rules.Azure
+          summary: true

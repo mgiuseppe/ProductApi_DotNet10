@@ -1,0 +1,17 @@
+# PSRule for Azure: Well-Architected rules on the Bicep templates.
+# At the repository root by Microsoft convention, where PSRule and its local tools (VS Code extension, Invoke-PSRule) find it.
+# Used by the "psrule" job in .github/workflows/ci.yml, informational only: findings never block a merge.
+include:
+  module:
+    - PSRule.Rules.Azure
+
+configuration:
+  AZURE_BICEPPARAM_FILE_EXPANSION: true
+
+input:
+  # The entry points through their parameter files; modules are expanded from them
+  pathIgnore:
+    - '**'
+    - '!infra/staging.bicepparam'
+    - '!infra/production.bicepparam'
+    - '!infra/shared.bicepparam'
