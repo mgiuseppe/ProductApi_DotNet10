@@ -40,6 +40,8 @@ The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in 
 | 4 | Integration tests | `Infrastructure.Tests`: they start a SQL Server container, so the runner needs a Docker daemon (GitHub-hosted Ubuntu runners should have one) |
 | 5 | Dependency vulnerabilities | NuGet audit (NU1902 and similar); `dotnet list package --vulnerable` |
 | 6 | Image build | `docker build` for the API image (`--target final`) and the migrator image (`--target migrator`), without pushing |
+
+Dependency updates: Dependabot opens weekly pull requests for NuGet, GitHub Actions, Dockerfile and Docker Compose (`.github/dependabot.yml`, read by GitHub from `main`); minor and patch updates are grouped per ecosystem. They go through the same checks as any other pull request.
  
 ## 3. Deployment pipeline (CD)
  
