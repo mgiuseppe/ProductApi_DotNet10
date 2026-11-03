@@ -1,0 +1,9 @@
+<Project>
+  <!-- Code style rules (.editorconfig) run in dotnet build, not only in the IDE, so the CI enforces them (docs/CICD.md, gates) -->
+  <PropertyGroup>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- IDE0005 (unnecessary using) runs in the build only when documentation is generated; missing XML comments are not required -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+</Project>
