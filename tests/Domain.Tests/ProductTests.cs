@@ -1,5 +1,4 @@
-﻿using System.Text;
-using Domain.Exceptions;
+﻿using Domain.Exceptions;
 using Domain.Products;
 
 namespace Domain.Tests;

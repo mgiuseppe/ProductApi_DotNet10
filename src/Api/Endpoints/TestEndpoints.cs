@@ -1,5 +1,3 @@
-using System;
-
 namespace Api.Endpoints;
 
 public static class TestEndpoints

@@ -1,6 +1,4 @@
-using Application.Common.Exceptions;
 using Application.Vouchers;
-using Domain.Exceptions;
 using MediatR;
 
 namespace Api.Endpoints;
