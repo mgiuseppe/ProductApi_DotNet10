@@ -16,9 +16,10 @@ internal class AppDbContext : DbContext, IUnitOfWork, IQueryContext
     private const int DuplicateKeyInUniqueIndex = 2601;
     private const int UniqueConstraintViolation = 2627;
 
-    public DbSet<Product> Products { get; set; }
-    public DbSet<Order> Orders { get; set; }
-    public DbSet<Voucher> Vouchers { get; set; }
+    // Set<T>() instead of auto-properties: no nullable warning (CS8618) and nothing to assign
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
 
     public AppDbContext(DbContextOptions<AppDbContext> opts) : base(opts)
     {

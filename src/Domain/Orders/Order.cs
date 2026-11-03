@@ -9,7 +9,7 @@ namespace Domain.Orders;
 /// This is a deliberate simplification, a real e-commerce would use a separate cart aggregate.
 /// 
 /// Invariants:
-/// - No rows with qty < 0
+/// - No rows with qty less than 0
 /// - No shipping without rows
 /// - No edits on shipped or canceled rows
 /// - Draft orders cannot be canceled because they should be deleted
