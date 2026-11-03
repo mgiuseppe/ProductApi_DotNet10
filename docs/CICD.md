@@ -34,7 +34,7 @@ The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in 
  
 | # | Check | Notes |
 |---|---|---|
-| 1 | Restore and build | Warnings treated as errors, except where a known false positive is documented |
+| 1 | Restore and build | Warnings treated as errors, except where a known false positive is documented. Code style rules from `.editorconfig` run in the build (`EnforceCodeStyleInBuild` in `Directory.Build.props`): today IDE0005, unnecessary `using`, which runs in the build only with `GenerateDocumentationFile` (CS1591, missing XML comments, is suppressed). Migrations are generated code and excluded |
 | 2 | Format check | `dotnet format --verify-no-changes` |
 | 3 | Unit tests | `Domain.Tests`, `Application.Tests` |
 | 4 | Integration tests | `Infrastructure.Tests`: they start a SQL Server container, so the runner needs a Docker daemon (GitHub-hosted Ubuntu runners should have one) |
