@@ -9,6 +9,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+      # One pull request per major update, covering every project that uses the package
+      # (without it, one per package and per directory)
+      major:
+        update-types: [major]
+        group-by: dependency-name
 
   - package-ecosystem: github-actions
     directory: /
