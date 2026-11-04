@@ -1,6 +1,6 @@
 # 0015. Azure infrastructure: Bicep stacks, secrets in Key Vault, shared MongoDB cluster
 
-- Status: Accepted; section "Secrets" superseded by [0018](0018-sql-entra-authentication-and-identity-per-workload.md) for Azure SQL
+- Status: Accepted; section "Secrets" superseded by [0018](0018-sql-entra-authentication-and-identity-per-workload.md) for Azure SQL, region superseded by [0019](0019-france-central-region.md)
 - Date: 2026-10-28
 
 ## Context

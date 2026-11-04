@@ -130,3 +130,4 @@ See [TestingStrategy](TestingStrategy.md).
 | [0013](adr/0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history |
 | [0015](adr/0015-azure-infrastructure.md) | Azure: Bicep deployment stacks that never delete on deploy, secrets in a Key Vault per environment, one free MongoDB cluster shared by the environments |
 | [0018](adr/0018-sql-entra-authentication-and-identity-per-workload.md) | Azure SQL with Entra authentication only: one identity per workload with least rights, database users created by the deploy workflow |
+| [0019](adr/0019-france-central-region.md) | France Central as the Azure region: the subscription cannot create Azure SQL servers in North Europe |

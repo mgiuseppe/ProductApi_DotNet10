@@ -58,7 +58,7 @@ jobs:
         # secret references: retry once (the stack is idempotent)
         run: |
           deploy() {
-            az stack sub create --name "$STACK" --location northeurope \
+            az stack sub create --name "$STACK" --location francecentral \
               --template-file infra/main.bicep --parameters "infra/${{ inputs.environment }}.bicepparam" \
               --action-on-unmanage detachAll --deny-settings-mode denyDelete --yes
           }

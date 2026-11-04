@@ -1,5 +1,5 @@
 // One environment (staging or production), deployed as a deployment stack (ADR-0015) after shared.bicep:
-//   az stack sub create --name productapi-<env> --location northeurope \
+//   az stack sub create --name productapi-<env> --location francecentral \
 //     --template-file infra/main.bicep --parameters infra/<env>.bicepparam \
 //     --action-on-unmanage detachAll --deny-settings-mode denyDelete
 // Modules are our own. Azure Verified Modules (br/public:avm/...) are the usual choice in enterprise setups:
@@ -10,8 +10,8 @@ targetScope = 'subscription'
 @allowed(['staging', 'production'])
 param environmentName string
 
-@description('Azure region for every resource (ADR-0015: North Europe, free DocumentDB tier).')
-param location string = 'northeurope'
+@description('Azure region for every resource (ADR-0019: France Central, Azure SQL and free DocumentDB tier).')
+param location string = 'francecentral'
 
 @description('Client id of the deployment identity of the environment, the Entra administrator of the SQL server (ADR-0018).')
 param sqlAdminClientId string

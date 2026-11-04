@@ -72,7 +72,7 @@ jobs:
         env:
           MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
         run: |
-          az stack sub create --name productapi-shared --location northeurope \
+          az stack sub create --name productapi-shared --location francecentral \
             --template-file infra/shared.bicep --parameters infra/shared.bicepparam \
             --action-on-unmanage detachAll --deny-settings-mode denyDelete --yes
 
