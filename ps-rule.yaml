@@ -24,9 +24,11 @@ rule:
   # Accepted trade-offs (ADR-0015: free tier, ephemeral environments, public API). Excluded so that the job
   # is green and a new finding stands out. Remove a line when the trade-off changes.
   exclude:
-    # Cost: zone redundancy and two replicas need a paid, always-on environment; min replicas 0 is the free tier
+    # Cost: zone redundancy and two replicas need a paid, always-on environment; min replicas 0 and the free
+    # DocumentDB cluster (no high availability) are the free tier
     - Azure.ContainerApp.AvailabilityZone
     - Azure.ContainerApp.MinReplicas
+    - Azure.Cosmos.MongoAvailabilityZone
     # Cost: Defender for SQL and vulnerability assessment are paid; auditing and Key Vault logs need Log Analytics
     - Azure.SQL.DefenderCloud
     - Azure.SQL.VAScan
@@ -41,6 +43,8 @@ rule:
     - Azure.KeyVault.PurgeProtect
     # Serverless database: the default maintenance window is enough
     - Azure.SQL.MaintenanceWindow
-    # To do with the CD work: Entra ID authentication (managed identity) instead of the SQL password, needs an ADR
+    # To do with the CD work: Entra ID authentication (managed identity) instead of the SQL and MongoDB passwords,
+    # needs an ADR
     - Azure.SQL.AAD
     - Azure.SQL.AADOnly
+    - Azure.Cosmos.MongoEntraID
