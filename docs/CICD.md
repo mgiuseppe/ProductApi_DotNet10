@@ -1,9 +1,6 @@
-
-
-Cicd · MD
 # CI/CD
  
-> **Status: written, not yet run.** Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. The one-time setup is in [SETUP_CICD_ONETIME.md](../SETUP_CICD_ONETIME.md).
+> **Status: CI running on every pull request; CD written, not yet run** (off until the repository variable `CD_ENABLED` is `true`). Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. How to apply the GitHub configuration is in [MAINTAINING](../MAINTAINING.md), the one-time CD setup in [SETUP_CICD_ONETIME.md](../SETUP_CICD_ONETIME.md).
 > This document records how I would build, test and deploy the project, and why.
  
 ## Principles
@@ -19,7 +16,7 @@ Cicd · MD
 A push to a feature branch is never rejected: the checks run afterwards and block the **merge**, not the push. Fixing a failed check means one more commit on the same branch and the same pull request (squash merge keeps the history clean). Local checks only make that feedback faster.
  
 - **Format on save** with the C# Dev Kit formatter, driven by `.editorconfig`.
-- **Optional git hooks** with [Husky.Net](https://github.com/alirezanet/Husky.Net):
+- **Optional git hooks** with [Husky.Net](https://github.com/alirezanet/Husky.Net), not set up yet:
   - `pre-commit`: `dotnet format --verify-no-changes` (fast, aborts the commit if something needs formatting).
   - `pre-push`: unit tests, if they stay fast.
   - Integration tests (they need Docker) run only in CI: a slow hook ends up being skipped.
@@ -28,21 +25,42 @@ A push to a feature branch is never rejected: the checks run afterwards and bloc
 
 ## 2. Pull request pipeline (CI)
  
-Ruleset on `main` ([CONTRIBUTING](../CONTRIBUTING.md)): no direct pushes, no force pushes, no bypass, required checks green, squash merge only ([CONTRIBUTING](../CONTRIBUTING.md#squash-merge-only)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
+Two rulesets on `main` ([CONTRIBUTING](../CONTRIBUTING.md)), whose rules add up:
 
-The ruleset is versioned in `.github/rulesets/main.json`; how to apply it is in [SETUP_CICD_ONETIME.md](../SETUP_CICD_ONETIME.md).
- 
-| # | Check | Notes |
-|---|---|---|
-| 1 | Restore and build | Warnings treated as errors, except where a known false positive is documented. Code style rules from `.editorconfig` run in the build (`EnforceCodeStyleInBuild` in `Directory.Build.props`): today IDE0005, unnecessary `using`, which runs in the build only with `GenerateDocumentationFile` (CS1591, missing XML comments, is suppressed). Migrations are generated code and excluded |
-| 2 | Format check | `dotnet format --verify-no-changes` |
-| 3 | Unit tests | `Domain.Tests`, `Application.Tests` |
-| 4 | Integration tests | `Infrastructure.Tests`: they start a SQL Server container, so the runner needs a Docker daemon (GitHub-hosted Ubuntu runners should have one) |
-| 5 | Dependency vulnerabilities | NuGet audit (NU1902 and similar); `dotnet list package --vulnerable` |
-| 6 | Image build | `docker build` for the API image (`--target final`) and the migrator image (`--target migrator`), without pushing |
+- `main-require-pr`: no direct pushes, no force pushes, no deletion, no bypass, squash merge only ([CONTRIBUTING](../CONTRIBUTING.md#squash-merge-only)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
+- `main-quality-gates`: required status checks green, CodeQL results without high or critical alerts.
 
-Dependency updates: Dependabot opens weekly pull requests for NuGet, GitHub Actions, Dockerfile and Docker Compose (`.github/dependabot.yml`, read by GitHub from `main`); minor and patch updates are grouped per ecosystem. They go through the same checks as any other pull request.
+They are versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh`; the repository settings a ruleset cannot express (merge buttons, Dependabot alerts, secret scanning, CodeQL) are set by hand in the UI. Both, and in which order: [MAINTAINING](../MAINTAINING.md).
  
+### Gates
+
+Every pull request to `main` goes through these gates. **Blocking** gates stop the merge (required checks or ruleset rules); **informational** ones report without blocking.
+
+| Gate | Tool | Where | Blocks |
+|---|---|---|---|
+| Format | `dotnet format --verify-no-changes` | `ci.yml` / `build-and-test` | Yes |
+| Build, warnings as errors | `dotnet build -warnaserror` | `build-and-test` | Yes |
+| Code style in the build | `EnforceCodeStyleInBuild` (`Directory.Build.props`) and `.editorconfig`; today IDE0005, unnecessary `using`. IDE0005 runs in the build only with `GenerateDocumentationFile` (CS1591, missing XML comments, is suppressed). Migrations are generated code and excluded | `build-and-test` | Yes |
+| Unit tests | `Domain.Tests`, `Application.Tests` | `build-and-test` | Yes |
+| Integration tests | `Infrastructure.Tests` on SQL Server via Testcontainers (Docker on the runner) | `build-and-test` | Yes |
+| Vulnerable packages, transitive included | NuGet audit during `dotnet restore` (NU1901-NU1904, any severity from low); the warnings are replayed by `dotnet build -warnaserror`, which fails. If the vulnerability source is unreachable, NU1900 fails the build too | `build-and-test` | Yes |
+| Shared migrations untouched, no forgotten migration | `git diff` on `src/Infrastructure/Migrations/`, `dotnet ef migrations has-pending-model-changes` ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)) | `build-and-test` | Yes |
+| Images build | `docker build` of the API and migrator targets, not pushed | `images` | Yes |
+| Image vulnerabilities | Trivy on both images: **critical** vulnerabilities **with a fix** (`ignore-unfixed`); "high" on base images would be mostly noise | `images` | Yes |
+| New dependencies | Dependency Review: a pull request that adds a dependency with a **high or critical** vulnerability | `dependency-review` | Yes |
+| Bicep | `az bicep lint` (rules in `infra/bicepconfig.json`) and `az bicep build` | `bicep` | Yes |
+| Code security (SAST) | CodeQL, GitHub default setup, on C# and the GitHub Actions workflows; the ruleset rule blocks **high or critical** security alerts and CodeQL errors | GitHub (not in `ci.yml`) | Yes |
+| Secrets | Secret scanning with **push protection**: a push containing a known secret format is rejected | GitHub repository setting | Yes, at push time |
+| Infrastructure best practices | PSRule for Azure (Well-Architected rules) on the Bicep, configured in `ps-rule.yaml`; some findings are accepted trade-offs ([ADR-0015](adr/0015-azure-infrastructure.md)) | `psrule` | No |
+| Dependency updates | Dependabot version updates: weekly pull requests for NuGet, GitHub Actions, Dockerfile and Docker Compose, vulnerable or not (`.github/dependabot.yml`) | GitHub | No |
+| Vulnerable dependencies fixes | Dependabot alerts and security updates: a pull request as soon as a vulnerability affects a dependency, without waiting for the weekly run (repository setting) | GitHub | No |
+
+Required status checks: `build-and-test`, `images`, `bicep`, `dependency-review`. Branches do not need to be up to date with `main` before merging (one maintainer, small pull requests).
+
+Actions in `ci.yml` are pinned to a commit SHA, with the version in a comment: a tag can be moved to another commit, a SHA cannot (GitHub security hardening guide). Dependabot updates the SHA and the comment. The pin covers the action's code, not what it downloads at run time (the Trivy binary, the PSRule modules). The CD workflows still use tags.
+
+Not adopted: a code coverage threshold (it rewards writing tests for the number), third-party analyzers (SonarAnalyzer, Roslynator).
+
 ## 3. Deployment pipeline (CD)
  
 Triggered by a merge on `main`.
@@ -50,7 +68,7 @@ Triggered by a merge on `main`.
 ```mermaid
 flowchart LR
   A[Build and push images<br/>tag = commit SHA] --> B[Deploy to staging<br/>infra, migrations, new version]
-  B --> C[Smoke tests<br/>/alive, /health, a few API calls]
+  B --> C[Smoke test<br/>/products via public URL]
   C --> D{Manual approval}
   D --> E[Deploy to production<br/>same image]
   E --> F[Post-deploy checks]
@@ -73,13 +91,13 @@ flowchart LR
 ## 5. Infrastructure
  
 - **Local:** Docker Compose (`docker compose up -d` for the infrastructure, `--profile app` for everything). Compose is not used in production.
-- **Target:** Azure Container Apps / App Service / AKS, with **managed** Azure SQL and MongoDB-compatible services instead of containers.
+- **Target:** Azure Container Apps (consumption), with **managed** Azure SQL (serverless) and Azure DocumentDB (MongoDB compatible) instead of containers ([ADR-0015](adr/0015-azure-infrastructure.md)).
 - **Infrastructure as code:** Bicep in `infra/`, deployed as one **deployment stack** per environment with the same settings everywhere ([ADR-0015](adr/0015-azure-infrastructure.md)):
   - `infra/main.bicep` at subscription scope creates the resource group and calls the modules in `infra/modules/`; `infra/<environment>.bicepparam` holds what differs between environments.
   - Deploy: `az stack sub create --action-on-unmanage detachAll --deny-settings-mode denyDelete`. A deployment never deletes resources, and resources of the stack cannot be deleted by hand.
   - Teardown: `az stack sub delete --action-on-unmanage deleteAll`, a separate manual operation and the only one that deletes resources.
   - A third stack, `productapi-shared`, owns the free DocumentDB cluster used by both environments, one database each. The pipeline deploys it on every run before the environments (idempotent); only "tear down everything" deletes it ([ADR-0015](adr/0015-azure-infrastructure.md)). Everything runs in North Europe.
-  - The pull request builds and lints the `.bicep` files (`infra/bicepconfig.json`) and shows a preview of the changes before approval. The `.bicepparam` files read pipeline values with `readEnvironmentVariable` and compile only inside a GitHub environment that provides them.
+  - The pull request builds and lints the `.bicep` files (`infra/bicepconfig.json`) and checks them with PSRule; it does not preview the changes (see Not covered). The `.bicepparam` files read pipeline values with `readEnvironmentVariable` and compile only inside a GitHub environment that provides them.
 
 ## 6. Database migrations
  
@@ -92,12 +110,12 @@ flowchart LR
  
 - `/alive` is the liveness check (the process is up) and `/health` the full one (database included). The platform probes use them.
 - The health endpoints answer only on a dedicated port (8081), in every environment: the probes target that port, the public ingress exposes only 8080 ([Observability](Observability.md#health-checks)). The probe interval matters: while a replica runs, every readiness probe queries the serverless SQL database and keeps it awake.
-- Rollout creates a new revision of the application and shifts traffic to it; rollback shifts it back or redeploys the previous tag, the exact mechanism is up to the chosen platform.
+- Rollout: each deployment creates a new Container Apps revision (single revision mode), which receives the traffic once its probes pass. Rollback redeploys the previous image tag.
 
 ## Not covered
  
 - A `what-if` preview of the Bicep changes on pull requests (it needs an Azure sign-in from pull requests).
 - Logs and traces in Azure: the Container Apps environment has no log destination yet.
 - Cloud costs, backups and retention of the managed databases.
-- Image vulnerability scanning, SBOM (an inventory of the components in the image) and signing (to verify that an image comes from the pipeline and was not altered).
+- SBOM (an inventory of the components in the image) and image signing (to verify that an image comes from the pipeline and was not altered).
 - Trace sampling and alerting.

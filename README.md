@@ -65,9 +65,9 @@ git switch -c feature/<short-name>          # or fix/, docs/, chore/
 gh pr merge --squash --delete-branch        # after reading the diff in the pull request
 ```
 
-### One-time setup
+### Repository administration
 
-Repository protection, Azure identities, GitHub environments and secrets: see [SETUP_CICD_ONETIME.md](SETUP_CICD_ONETIME.md).
+Repository protection and settings: see [MAINTAINING.md](MAINTAINING.md). Azure identities, GitHub environments and secrets for CD: see [SETUP_CICD_ONETIME.md](SETUP_CICD_ONETIME.md).
 
 ## Tools and vscodes plugins
 

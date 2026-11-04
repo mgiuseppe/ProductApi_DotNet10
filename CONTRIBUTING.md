@@ -2,12 +2,12 @@
 
 ## GitHub Flow
 
-`main` is protected by a ruleset versioned in `.github/rulesets/main.json`:
+`main` is protected by two rulesets versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh` ([MAINTAINING](MAINTAINING.md)): `main-require-pr.json` (the points below) and `main-quality-gates.json` (required status checks and CodeQL results, [CICD](docs/CICD.md#2-pull-request-pipeline-ci)):
 
 - Every change starts from `main` on a short-lived branch (`feature/`, `fix/`, `docs/`, `chore/`) or a worktree, and reaches `main` only through a pull request.
 - No direct pushes, no force pushes and no deletion of `main`, with no bypass, administrators included.
 - **0 required approvals**: GitHub does not let authors approve their own pull requests, so with one maintainer a required review would block every merge. The review is reading the diff, with the `architecture-reviewer` subagent.
-- When the CI exists, its jobs become required checks and pull requests use auto-merge.
+- The CI jobs are required status checks (`main-quality-gates`): a pull request is merged only when they are green.
 
 Why: the project has one maintainer and direct pushes would be enough, but it is meant to work like a real application, where changes reach `main` only through pull requests. Git Flow (`develop`, release branches) was not chosen: it is built for versioned releases, not for an app deployed from `main`.
 

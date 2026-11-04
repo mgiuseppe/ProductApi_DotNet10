@@ -24,6 +24,7 @@ resource vault 'Microsoft.KeyVault/vaults@2024-11-01' = {
       name: 'standard'
     }
     enableRbacAuthorization: true // access through role assignments, no access policies
+    enableSoftDelete: true // always on in Azure; written out so the template states it (PSRule Azure.KeyVault.SoftDelete)
     softDeleteRetentionInDays: 7 // the minimum: teardown purges the vault so the name can be reused
   }
 }
