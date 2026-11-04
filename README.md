@@ -67,7 +67,7 @@ gh pr merge --squash --delete-branch        # after reading the diff in the pull
 
 ### Repository administration
 
-Repository protection and settings: see [MAINTAINING.md](MAINTAINING.md). Azure identities, GitHub environments and secrets for CD: see [SETUP_CICD_ONETIME.md](SETUP_CICD_ONETIME.md).
+Repository protection and settings, Azure identities, GitHub environments and secrets for CD: see [MAINTAINING.md](MAINTAINING.md).
 
 ## Tools and vscodes plugins
 

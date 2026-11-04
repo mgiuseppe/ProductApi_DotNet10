@@ -2,7 +2,7 @@
 
 ## GitHub Flow
 
-`main` is protected by two rulesets versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh` ([MAINTAINING](MAINTAINING.md)): `main-require-pr.json` (the points below) and `main-quality-gates.json` (required status checks and CodeQL results, [CICD](docs/CICD.md#2-pull-request-pipeline-ci)):
+`main` is protected by two rulesets versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh` ([CI setup and maintenance](docs/administrators/CISetupAndMaintenance.md)): `main-require-pr.json` (the points below) and `main-quality-gates.json` (required status checks and CodeQL results, [CICD](docs/CICD.md#2-pull-request-pipeline-ci)):
 
 - Every change starts from `main` on a short-lived branch (`feature/`, `fix/`, `docs/`, `chore/`) or a worktree, and reaches `main` only through a pull request.
 - No direct pushes, no force pushes and no deletion of `main`, with no bypass, administrators included.

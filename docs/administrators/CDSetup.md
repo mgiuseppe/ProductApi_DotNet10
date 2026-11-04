@@ -1,6 +1,6 @@
-# One-time CD setup
+# CD setup
 
-Steps done once by hand, by a repository and Azure subscription admin, before the first deployment. The GitHub configuration of the CI (rulesets, repository settings) is in [MAINTAINING](MAINTAINING.md). Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](docs/CICD.md) and [ADR-0015](docs/adr/0015-azure-infrastructure.md).
+Steps done once by hand, by a repository and Azure subscription admin, before the first deployment. The GitHub configuration of the CI (rulesets, repository settings) is in [MAINTAINING](../../MAINTAINING.md). Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](../CICD.md) and [ADR-0015](../adr/0015-azure-infrastructure.md).
 
 Tools: GitHub CLI (`gh auth login`, check with `gh auth status`) and Azure CLI (`az login`).
 
