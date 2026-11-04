@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   images:
-    # Off until the one-time Azure setup is done (SETUP_CICD_ONETIME.md): repository variable CD_ENABLED=true
+    # Off until the one-time Azure setup is done (docs/administrators/CDSetup.md): repository variable CD_ENABLED=true
     if: vars.CD_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:

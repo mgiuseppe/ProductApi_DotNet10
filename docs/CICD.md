@@ -1,6 +1,6 @@
 # CI/CD
  
-> **Status: CI running on every pull request; CD written, not yet run** (off until the repository variable `CD_ENABLED` is `true`). Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. How to apply the GitHub configuration is in [MAINTAINING](../MAINTAINING.md), the one-time CD setup in [SETUP_CICD_ONETIME.md](../SETUP_CICD_ONETIME.md).
+> **Status: CI running on every pull request; CD written, not yet run** (off until the repository variable `CD_ENABLED` is `true`). Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. Setup and maintenance of CI and CD: [MAINTAINING](../MAINTAINING.md).
 > This document records how I would build, test and deploy the project, and why.
  
 ## Principles
@@ -30,7 +30,7 @@ Two rulesets on `main` ([CONTRIBUTING](../CONTRIBUTING.md)), whose rules add up:
 - `main-require-pr`: no direct pushes, no force pushes, no deletion, no bypass, squash merge only ([CONTRIBUTING](../CONTRIBUTING.md#squash-merge-only)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
 - `main-quality-gates`: required status checks green, CodeQL results without high or critical alerts.
 
-They are versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh`; the repository settings a ruleset cannot express (merge buttons, Dependabot alerts, secret scanning, CodeQL) are set by hand in the UI. Both, and in which order: [MAINTAINING](../MAINTAINING.md).
+They are versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh`; the repository settings a ruleset cannot express (merge buttons, Dependabot alerts, secret scanning, CodeQL) are set by hand in the UI. Both, and in which order: [CI setup and maintenance](administrators/CISetupAndMaintenance.md).
  
 ### Gates
 
