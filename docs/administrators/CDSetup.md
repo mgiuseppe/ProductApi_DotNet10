@@ -1,81 +1,39 @@
 # CD setup
 
-Steps done once by hand, by a repository and Azure subscription admin, before the first deployment. The GitHub configuration of the CI (rulesets, repository settings) is in [MAINTAINING](../../MAINTAINING.md). Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](../CICD.md) and [ADR-0015](../adr/0015-azure-infrastructure.md).
+For a repository and Azure subscription admin: the setup done once before the first deployment (the CD workflow logs in to Azure with an identity, and that identity cannot create itself), the first deployment, and how to turn CD off and tear it down. Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](../CICD.md) and [ADR-0015](../adr/0015-azure-infrastructure.md).
 
-Tools: GitHub CLI (`gh auth login`, check with `gh auth status`) and Azure CLI (`az login`).
+## 1. Run the setup script
 
-## 1. Azure subscription
+[scripts/cd-setup.sh](../../scripts/cd-setup.sh) configures, in order:
 
-Register the resource providers the templates use (once per subscription):
+1. the Azure resource providers the templates use;
+2. one Entra identity per environment (`github-productapi-staging`, `github-productapi-production`), trusted by GitHub through OIDC with no secret, with its roles;
+3. the GitHub environments `staging` and `production` (production waits for your approval) and their `AZURE_*` variables;
+4. the secret `MONGO_ADMIN_PASSWORD`, typed at a hidden prompt. Azure SQL has no password: the deployment identity is its Entra administrator ([ADR-0018](../adr/0018-sql-entra-authentication-and-identity-per-workload.md)).
+
+Each step checks first whether its result already exists: re-running the script after a failure is safe.
+
+Requirements: bash 4 or later (on Windows, Git Bash), the GitHub CLI and the Azure CLI, both logged in.
 
 ```bash
-for ns in Microsoft.App Microsoft.DocumentDB Microsoft.KeyVault Microsoft.Sql Microsoft.ManagedIdentity; do
-  az provider register --namespace "$ns"
-done
+gh auth login
+az login
+./scripts/cd-setup.sh
 ```
 
-Create one identity per environment for GitHub Actions, trusted only for that GitHub environment (OIDC, no secret):
-
-```bash
-REPO=mgiuseppe/ProductApi_DotNet10
-SUBSCRIPTION=$(az account show --query id -o tsv)
-SCOPE=/subscriptions/$SUBSCRIPTION
-# Lets the identity create and delete only "Key Vault Secrets User" assignments (the one the template creates).
-# The role id is written out: a "!" inside double quotes would trigger history expansion in interactive bash.
-CONDITION='((!(ActionMatches{'"'"'Microsoft.Authorization/roleAssignments/write'"'"'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {4633458b-17de-408a-b874-0445c86b69e6})) AND ((!(ActionMatches{'"'"'Microsoft.Authorization/roleAssignments/delete'"'"'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {4633458b-17de-408a-b874-0445c86b69e6}))'
-
-for env in staging production; do
-  appId=$(az ad app create --display-name "github-productapi-$env" --query appId -o tsv)
-  # Object id of the service principal: assigning roles by appId right after creation often fails (directory replication)
-  spId=$(az ad sp create --id "$appId" --query id -o tsv)
-  az ad app federated-credential create --id "$appId" --parameters "{
-    \"name\": \"github-$env\",
-    \"issuer\": \"https://token.actions.githubusercontent.com\",
-    \"subject\": \"repo:$REPO:environment:$env\",
-    \"audiences\": [\"api://AzureADTokenExchange\"]
-  }"
-  sp=(--assignee-object-id "$spId" --assignee-principal-type ServicePrincipal --scope "$SCOPE")
-  az role assignment create "${sp[@]}" --role Contributor
-  az role assignment create "${sp[@]}" --role "Azure Deployment Stack Owner"
-  az role assignment create "${sp[@]}" --role "Role Based Access Control Administrator" \
-    --condition "$CONDITION" --condition-version 2.0
-  echo "$env: AZURE_CLIENT_ID=$appId"
-done
-```
-
-The roles are at subscription scope because the stacks create their resource groups: the separation between the staging and production identities is a convention of the workflows, not enforced by Azure.
+The script shows the GitHub repository and the Azure subscription it will configure and asks before changing anything. If the subscription is wrong, select the right one with `az account set --subscription <name or id>` and run it again.
 
 Optional but recommended: a budget on the subscription with alerts (Cost Management, for example 1 EUR with alerts at 50% and 100%). Budgets only warn, they never stop spending.
 
-## 2. GitHub environments, variables and secrets
-
-```bash
-REPO=mgiuseppe/ProductApi_DotNet10
-
-# Environments; production waits for your approval
-gh api --method PUT "repos/$REPO/environments/staging"
-echo '{"reviewers":[{"type":"User","id":'"$(gh api user --jq .id)"'}]}' \
-  | gh api --method PUT "repos/$REPO/environments/production" --input -
-
-# Per environment: the identity created above (not secret)
-for env in staging production; do
-  gh variable set AZURE_CLIENT_ID --env "$env" --repo "$REPO" --body "<appId of $env>"
-  gh variable set AZURE_TENANT_ID --env "$env" --repo "$REPO" --body "$(az account show --query tenantId -o tsv)"
-  gh variable set AZURE_SUBSCRIPTION_ID --env "$env" --repo "$REPO" --body "$(az account show --query id -o tsv)"
-done
-
-# Passwords (prompted, never typed on the command line): SQL Server complexity rules, and no ; ' " characters,
-# because they end up inside connection strings
-gh secret set SQL_ADMIN_PASSWORD --repo "$REPO"
-gh secret set MONGO_ADMIN_PASSWORD --repo "$REPO"
-```
-
-## 3. First deployment
+## 2. First deployment
 
 1. Turn CD on: `gh variable set CD_ENABLED --repo mgiuseppe/ProductApi_DotNet10 --body true`.
-2. Run CD with **images only** (Actions → CD → Run workflow → "Only build and push the images"), so the GHCR packages exist.
+2. Build only the images, so the GHCR packages exist: `gh workflow run cd.yml --repo mgiuseppe/ProductApi_DotNet10 -f images-only=true` (or Actions → CD → Run workflow → "Only build and push the images").
 3. Make the packages `productapi-api` and `productapi-migrator` **public** (GitHub → your profile → Packages → package → Package settings → Change visibility): Container Apps pull them without credentials. GitHub has no API for this.
 4. Run CD again without the option: shared stack, staging, then production after your approval. The smoke test prints the API URL.
 5. Check once that each environment uses its own MongoDB database: the connection string in the Key Vault must end with `/productapi-staging?...` (or `-production`). Bicep builds it from Azure's template; if that format changes, the database name falls back to `productapi`, shared by both.
 
-To delete everything: Actions → Teardown → `everything` (type it twice).
+## 3. Turning off and teardown
+
+- Turn CD off: `gh variable set CD_ENABLED --repo mgiuseppe/ProductApi_DotNet10 --body false`.
+- Delete everything: Actions → Teardown → `everything` (type it twice).
