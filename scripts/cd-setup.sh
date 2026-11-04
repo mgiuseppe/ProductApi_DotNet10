@@ -32,7 +32,9 @@ REPO=mgiuseppe/ProductApi_DotNet10
 ENVIRONMENTS=(staging production)
 
 # The GitHub environments and the federated credentials must use the same names: the OIDC token GitHub
-# sends to Azure carries "repo:<owner>/<name>:environment:<env>", and Azure compares it character by character.
+# sends to Azure carries "<prefix>:environment:<env>" as subject, and Azure compares it character by character.
+# The prefix is "repo:<owner>/<name>", or with immutable subjects (the default for repositories created after
+# 15 July 2026) "repo:<owner>@<owner id>/<name>@<repository id>": the script reads it from GitHub.
 
 # ---------------------------------------------------------------------------------------------------------
 # Git Bash quirks
@@ -66,6 +68,9 @@ SUBSCRIPTION_NAME=$(az account show --query name -o tsv | remove_carriage_return
 TENANT_ID=$(az account show --query tenantId -o tsv | remove_carriage_return)
 SCOPE=/subscriptions/$SUBSCRIPTION_ID
 
+# Subject prefix of this repository's OIDC tokens, as GitHub issues them (see the settings at the top)
+SUBJECT_PREFIX=$(gh api "repos/$REPO/actions/oidc/customization/sub" --jq .sub_claim_prefix)
+
 info "GitHub repository:  $REPO"
 info "Azure subscription: $SUBSCRIPTION_NAME ($SUBSCRIPTION_ID)"
 
@@ -85,7 +90,6 @@ step "1. Registering the Azure resource providers"
 for ns in Microsoft.App Microsoft.DocumentDB Microsoft.KeyVault Microsoft.Sql Microsoft.ManagedIdentity; do
   info registering - "$ns"...
   az provider register --namespace "$ns" --wait >/dev/null
-  info done
 done
 
 # ---------------------------------------------------------------------------------------------------------
@@ -159,18 +163,25 @@ for env in "${ENVIRONMENTS[@]}"; do
   # A job without "environment: staging" gets a different subject and is refused, which is what keeps the
   # production identity out of reach of any job that has not passed the production approval.
   credential_name="github-$env"
-  existing_credential=$(az ad app federated-credential list --id "$app_id" \
-    --query "[?name=='$credential_name'] | [0].name" -o tsv | remove_carriage_return)
-  if [[ -z "$existing_credential" ]]; then
-    az ad app federated-credential create --id "$app_id" --parameters "{
-      \"name\": \"$credential_name\",
-      \"issuer\": \"https://token.actions.githubusercontent.com\",
-      \"subject\": \"repo:$REPO:environment:$env\",
-      \"audiences\": [\"api://AzureADTokenExchange\"]
-    }" >/dev/null
-    info "Federated credential for repo:$REPO:environment:$env: created"
+  subject="$SUBJECT_PREFIX:environment:$env"
+  credential="{
+    \"name\": \"$credential_name\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"$subject\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+  existing_subject=$(az ad app federated-credential list --id "$app_id" \
+    --query "[?name=='$credential_name'] | [0].subject" -o tsv | remove_carriage_return)
+  if [[ -z "$existing_subject" ]]; then
+    az ad app federated-credential create --id "$app_id" --parameters "$credential" >/dev/null
+    info "Federated credential for $subject: created"
+  elif [[ "$existing_subject" != "$subject" ]]; then
+    # Created with another subject format (for example before the repository switched to immutable subjects)
+    az ad app federated-credential update --id "$app_id" --federated-credential-id "$credential_name" \
+      --parameters "$credential" >/dev/null
+    info "Federated credential for $subject: updated (was $existing_subject)"
   else
-    info "Federated credential for repo:$REPO:environment:$env: exists"
+    info "Federated credential for $subject: exists"
   fi
 
   # Roles at subscription scope, because the deployment stacks create their own resource groups:
