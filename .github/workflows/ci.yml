@@ -125,11 +125,14 @@ jobs:
       MONGO_ADMIN_PASSWORD: placeholder
       API_IMAGE: ghcr.io/placeholder/api:0
       MIGRATOR_IMAGE: ghcr.io/placeholder/migrator:0
-      # PSRule needs the Bicep CLI to expand the templates: use the one of the Azure CLI, installed below
-      PSRULE_AZURE_BICEP_USE_AZURE_CLI: true
     steps:
       - uses: actions/checkout@v4
-      - run: az bicep install
+      # PSRule needs the Bicep CLI to expand the templates: install it and pass its full path
+      - name: Install Bicep
+        run: |
+          az bicep install
+          "$HOME/.azure/bin/bicep" --version
+          echo "PSRULE_AZURE_BICEP_PATH=$HOME/.azure/bin/bicep" >> "$GITHUB_ENV"
       - uses: microsoft/ps-rule@v2.9.0
         with:
           modules: PSRule.Rules.Azure
