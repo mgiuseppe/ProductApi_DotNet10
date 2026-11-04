@@ -37,10 +37,8 @@ rule:
     - Azure.ContainerApp.RestrictIngress
     - Azure.SQL.AllowAzureAccess
     - Azure.KeyVault.Firewall
-    # Ephemeral environments: purge protection would block recreating the vault with the same name for 90 days.
-    # Soft delete is always on in Azure; the rule fails only because the template does not set the field
+    # Ephemeral environments: purge protection would block recreating the vault with the same name for 90 days
     - Azure.KeyVault.PurgeProtect
-    - Azure.KeyVault.SoftDelete
     # Serverless database: the default maintenance window is enough
     - Azure.SQL.MaintenanceWindow
     # To do with the CD work: Entra ID authentication (managed identity) instead of the SQL password, needs an ADR
