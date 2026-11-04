@@ -10,6 +10,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore first (only csproj files) so the layer is cached until dependencies change
+# Copy the solution-wide MSBuild files: package versions (Central Package Management) and build settings
+COPY Directory.Packages.props Directory.Build.props ./
 # Copy csproj
 COPY src/Domain/Domain.csproj src/Domain/
 COPY src/Application/Application.csproj src/Application/
