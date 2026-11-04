@@ -127,12 +127,15 @@ jobs:
       MIGRATOR_IMAGE: ghcr.io/placeholder/migrator:0
     steps:
       - uses: actions/checkout@v4
-      # PSRule needs the Bicep CLI to expand the templates: install it and pass its full path
+      # PSRule needs the Bicep CLI to expand the templates: the standalone binary from the official release
+      # (Microsoft's manual install for Linux), at a known path passed to PSRule
       - name: Install Bicep
         run: |
-          az bicep install
-          "$HOME/.azure/bin/bicep" --version
-          echo "PSRULE_AZURE_BICEP_PATH=$HOME/.azure/bin/bicep" >> "$GITHUB_ENV"
+          curl -fsSLo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
+          chmod +x bicep
+          sudo mv bicep /usr/local/bin/bicep
+          bicep --version
+          echo "PSRULE_AZURE_BICEP_PATH=/usr/local/bin/bicep" >> "$GITHUB_ENV"
       - uses: microsoft/ps-rule@v2.9.0
         with:
           modules: PSRule.Rules.Azure
