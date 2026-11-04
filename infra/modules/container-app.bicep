@@ -1,11 +1,12 @@
-// The API: public ingress on 8080, health probes on 8081 (not exposed by the ingress), secrets from Key Vault.
+// The API: public ingress on 8080, health probes on 8081 (not exposed by the ingress), MongoDB secret from Key Vault.
 param name string
 param location string
 param tags object
 param environmentId string
 param identityId string
 param image string
-param sqlSecretUri string
+@description('Azure SQL connection string, without secret: the identity signs in (ADR-0018).')
+param sqlConnectionString string
 param mongoSecretUri string
 
 resource app 'Microsoft.App/containerApps@2026-07-01' = {
@@ -31,11 +32,6 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
       }
       secrets: [
         {
-          name: 'sql-connection-string'
-          keyVaultUrl: sqlSecretUri
-          identity: identityId
-        }
-        {
           name: 'mongo-connection-string'
           keyVaultUrl: mongoSecretUri
           identity: identityId
@@ -52,7 +48,7 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
             memory: '0.5Gi'
           }
           env: [
-            { name: 'ConnectionStrings__DbConnection', secretRef: 'sql-connection-string' }
+            { name: 'ConnectionStrings__DbConnection', value: sqlConnectionString }
             { name: 'ConnectionStrings__MongoDb', secretRef: 'mongo-connection-string' }
           ]
           probes: [

@@ -28,7 +28,8 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 | [0009](0009-migrations-with-migrator-container.md) | Migrations applied by a migrator container | Accepted |
 | [0010](0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after | Accepted |
 | [0013](0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history | Accepted |
-| [0015](0015-azure-infrastructure.md) | Azure infrastructure: Bicep stacks, secrets in Key Vault, shared MongoDB cluster | Accepted |
+| [0015](0015-azure-infrastructure.md) | Azure infrastructure: Bicep stacks, secrets in Key Vault, shared MongoDB cluster | Accepted, partly superseded by 0018 |
+| [0018](0018-sql-entra-authentication-and-identity-per-workload.md) | Azure SQL with Entra authentication and one identity per workload | Accepted |
 
 ## Template
 

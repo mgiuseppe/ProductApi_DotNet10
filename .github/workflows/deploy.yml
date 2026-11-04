@@ -52,7 +52,7 @@ jobs:
       - name: Infrastructure (deployment stack, never deletes, ADR-0015)
         env:
           MIGRATOR_IMAGE: ${{ inputs.migrator-image }}
-          SQL_ADMIN_PASSWORD: ${{ secrets.SQL_ADMIN_PASSWORD }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
         # On a fresh environment the Key Vault role assignment may not have propagated when the app checks its
         # secret references: retry once (the stack is idempotent)
@@ -63,6 +63,26 @@ jobs:
               --action-on-unmanage detachAll --deny-settings-mode denyDelete --yes
           }
           deploy || { echo "Retrying in 60 s"; sleep 60; deploy; }
+
+      # Database users are not Azure resources: created with T-SQL, signed in with the OIDC login above, which is
+      # the server's Entra administrator (ADR-0018). Values from the stack outputs; the script is idempotent.
+      - name: Database users values
+        run: |
+          outputs=$(az stack sub show --name "$STACK" --query outputs -o json)
+          # -e: fail on a missing output instead of writing "null"
+          value() { jq -er --arg key "$1" '.[$key].value' <<<"$outputs"; }
+          {
+            echo "SQL_CONNECTION_STRING=Server=tcp:$(value sqlServerFqdn),1433;Initial Catalog=$(value sqlDatabaseName);Authentication=Active Directory Default;Encrypt=True;TrustServerCertificate=False;Connection Timeout=60"
+            echo "SQL_VARIABLES=-v ApiName=$(value apiIdentityName) -v ApiClientId=$(value apiIdentityClientId) -v MigratorName=$(value migratorIdentityName) -v MigratorClientId=$(value migratorIdentityClientId)"
+          } >> "$GITHUB_ENV"
+
+      # Connection Timeout 60: the serverless database may be paused and takes up to a minute to resume
+      - name: Database users
+        uses: azure/sql-action@v2.4
+        with:
+          connection-string: ${{ env.SQL_CONNECTION_STRING }}
+          path: infra/sql/database-users.sql
+          arguments: ${{ env.SQL_VARIABLES }}
 
       - name: Migrations (the API is not updated if they fail)
         run: |

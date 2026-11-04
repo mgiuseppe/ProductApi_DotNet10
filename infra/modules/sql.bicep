@@ -1,20 +1,30 @@
-// Azure SQL with a SQL login and the free offer (ADR-0013, ADR-0015).
+// Azure SQL with Entra authentication only and the free offer (ADR-0013, ADR-0018).
+// The Entra administrator is the identity that deploys the environment: the deploy workflow signs in with it
+// to create the database users of the API and the migrator (infra/sql/database-users.sql).
 param serverName string
 param databaseName string
 param location string
 param tags object
+
+@description('Display name of the Entra administrator.')
 param adminLogin string
 
-@secure()
-param adminPassword string
+@description('Client (application) id of the Entra administrator: for an application, Azure SQL identifies it by client id.')
+param adminClientId string
 
 resource server 'Microsoft.Sql/servers@2025-01-01' = {
   name: serverName
   location: location
   tags: tags
   properties: {
-    administratorLogin: adminLogin
-    administratorLoginPassword: adminPassword
+    administrators: {
+      administratorType: 'ActiveDirectory'
+      azureADOnlyAuthentication: true // no SQL logins, no password
+      principalType: 'Application'
+      login: adminLogin
+      sid: adminClientId
+      tenantId: tenant().tenantId
+    }
     minimalTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
   }

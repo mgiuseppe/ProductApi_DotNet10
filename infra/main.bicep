@@ -13,13 +13,8 @@ param environmentName string
 @description('Azure region for every resource (ADR-0015: North Europe, free DocumentDB tier).')
 param location string = 'northeurope'
 
-@description('Administrator login of the SQL server.')
-@minLength(1)
-param sqlAdminLogin string
-
-@description('Administrator password of the SQL server, from a GitHub secret (ADR-0015).')
-@secure()
-param sqlAdminPassword string
+@description('Client id of the deployment identity of the environment, the Entra administrator of the SQL server (ADR-0018).')
+param sqlAdminClientId string
 
 @description('API image (ghcr.io/...:<tag>). The pipeline passes the image currently running, so a deployment never ships new code before the migrator has run.')
 param apiImage string
@@ -68,6 +63,7 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
   }
 }
 
+// Entra administrator: the deployment identity of the environment (ADR-0018)
 module sql 'modules/sql.bicep' = {
   scope: resourceGroup
   params: {
@@ -75,8 +71,8 @@ module sql 'modules/sql.bicep' = {
     databaseName: appName
     location: location
     tags: tags
-    adminLogin: sqlAdminLogin
-    adminPassword: sqlAdminPassword
+    adminLogin: 'github-${appName}-${environmentName}'
+    adminClientId: sqlAdminClientId
   }
 }
 
@@ -91,14 +87,27 @@ var mongoConnectionString = replace(
   '/${appName}-${environmentName}?'
 )
 
-module identity 'modules/identity.bicep' = {
+// One identity per workload, so each gets only its own database rights (ADR-0018)
+module apiIdentity 'modules/identity.bicep' = {
   scope: resourceGroup
   params: {
-    name: 'id-${appName}-${environmentName}'
+    name: 'id-${appName}-api-${environmentName}'
     location: location
     tags: tags
   }
 }
+
+module migratorIdentity 'modules/identity.bicep' = {
+  scope: resourceGroup
+  params: {
+    name: 'id-${appName}-migrator-${environmentName}'
+    location: location
+    tags: tags
+  }
+}
+
+// No secret: the identity named by User Id signs in (ADR-0018)
+var sqlConnectionStringBase = 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${sql.outputs.databaseName};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False'
 
 module keyVault 'modules/key-vault.bicep' = {
   scope: resourceGroup
@@ -106,13 +115,12 @@ module keyVault 'modules/key-vault.bicep' = {
     name: 'kv-${appName}-${take(suffix, 8)}' // max 24 characters, globally unique
     location: location
     tags: tags
-    readerPrincipalId: identity.outputs.principalId
-    sqlConnectionString: 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${sql.outputs.databaseName};User ID=${sqlAdminLogin};Password=${sqlAdminPassword};Encrypt=True;TrustServerCertificate=False'
+    readerPrincipalIds: [apiIdentity.outputs.principalId, migratorIdentity.outputs.principalId]
     mongoConnectionString: mongoConnectionString
   }
 }
 
-// App and job depend on the vault module outputs, so they are created after the identity can read the secrets
+// App and job depend on the vault module outputs, so they are created after their identities can read the secret
 module api 'modules/container-app.bicep' = {
   scope: resourceGroup
   params: {
@@ -120,9 +128,9 @@ module api 'modules/container-app.bicep' = {
     location: location
     tags: tags
     environmentId: containerAppsEnvironment.outputs.id
-    identityId: identity.outputs.id
+    identityId: apiIdentity.outputs.id
     image: apiImage
-    sqlSecretUri: keyVault.outputs.sqlSecretUri
+    sqlConnectionString: '${sqlConnectionStringBase};User Id=${apiIdentity.outputs.clientId}'
     mongoSecretUri: keyVault.outputs.mongoSecretUri
   }
 }
@@ -134,9 +142,9 @@ module migrator 'modules/migrator-job.bicep' = {
     location: location
     tags: tags
     environmentId: containerAppsEnvironment.outputs.id
-    identityId: identity.outputs.id
+    identityId: migratorIdentity.outputs.id
     image: migratorImage
-    sqlSecretUri: keyVault.outputs.sqlSecretUri
+    sqlConnectionString: '${sqlConnectionStringBase};User Id=${migratorIdentity.outputs.clientId}'
     mongoSecretUri: keyVault.outputs.mongoSecretUri
   }
 }
@@ -146,3 +154,10 @@ output keyVaultName string = keyVault.outputs.name
 output apiName string = api.outputs.name
 output apiFqdn string = api.outputs.fqdn
 output migratorJobName string = migrator.outputs.name
+// Read by the deploy workflow to create the database users (infra/sql/database-users.sql)
+output sqlServerFqdn string = sql.outputs.serverFqdn
+output sqlDatabaseName string = sql.outputs.databaseName
+output apiIdentityName string = apiIdentity.outputs.name
+output apiIdentityClientId string = apiIdentity.outputs.clientId
+output migratorIdentityName string = migratorIdentity.outputs.name
+output migratorIdentityClientId string = migratorIdentity.outputs.clientId
