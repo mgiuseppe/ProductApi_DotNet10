@@ -15,3 +15,34 @@ input:
     - '!infra/staging.bicepparam'
     - '!infra/production.bicepparam'
     - '!infra/shared.bicepparam'
+
+execution:
+  # Files and objects no rule applies to (bicepconfig.json, the repository itself...): not worth a warning
+  unprocessedObject: Ignore
+
+rule:
+  # Accepted trade-offs (ADR-0015: free tier, ephemeral environments, public API). Excluded so that the job
+  # is green and a new finding stands out. Remove a line when the trade-off changes.
+  exclude:
+    # Cost: zone redundancy and two replicas need a paid, always-on environment; min replicas 0 is the free tier
+    - Azure.ContainerApp.AvailabilityZone
+    - Azure.ContainerApp.MinReplicas
+    # Cost: Defender for SQL and vulnerability assessment are paid; auditing and Key Vault logs need Log Analytics
+    - Azure.SQL.DefenderCloud
+    - Azure.SQL.VAScan
+    - Azure.SQL.Auditing
+    - Azure.KeyVault.Logs
+    # Public by design: the API is public, consumption Container Apps have no fixed outbound IP (no VNet)
+    - Azure.ContainerApp.PublicAccess
+    - Azure.ContainerApp.RestrictIngress
+    - Azure.SQL.AllowAzureAccess
+    - Azure.KeyVault.Firewall
+    # Ephemeral environments: purge protection would block recreating the vault with the same name for 90 days.
+    # Soft delete is always on in Azure; the rule fails only because the template does not set the field
+    - Azure.KeyVault.PurgeProtect
+    - Azure.KeyVault.SoftDelete
+    # Serverless database: the default maintenance window is enough
+    - Azure.SQL.MaintenanceWindow
+    # To do with the CD work: Entra ID authentication (managed identity) instead of the SQL password, needs an ADR
+    - Azure.SQL.AAD
+    - Azure.SQL.AADOnly
