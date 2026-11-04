@@ -1,5 +1,6 @@
 # Pull request gates (docs/CICD.md, section 2): the same checks as /verify-and-commit, plus security scans.
 # build-and-test, images, bicep and dependency-review are required checks (ruleset main-quality-gates); psrule is informational.
+# Actions are pinned to a commit SHA, which cannot be moved like a tag; the comment is the version, Dependabot updates both.
 name: CI
 
 on:
@@ -19,11 +20,11 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0 # the migration check compares with origin/main
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: '10.0.x'
 
@@ -70,21 +71,21 @@ jobs:
   images:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build the API image
         run: docker build --target final -t productapi-api:ci .
       - name: Build the migrator image
         run: docker build --target migrator -t productapi-migrator:ci .
       # Fails only on critical vulnerabilities that have a fix: "high" on base images would mostly be noise
       - name: Scan the API image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: productapi-api:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'
       - name: Scan the migrator image
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: productapi-migrator:ci
           severity: CRITICAL
@@ -95,7 +96,7 @@ jobs:
   bicep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Lint and build (rules in infra/bicepconfig.json)
         run: |
           az bicep install
@@ -109,8 +110,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: high
 
@@ -126,7 +127,7 @@ jobs:
       API_IMAGE: ghcr.io/placeholder/api:0
       MIGRATOR_IMAGE: ghcr.io/placeholder/migrator:0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       # PSRule needs the Bicep CLI to expand the templates: the standalone binary from the official release
       # (Microsoft's manual install for Linux), at a known path passed to PSRule
       - name: Install Bicep
@@ -136,7 +137,7 @@ jobs:
           sudo mv bicep /usr/local/bin/bicep
           bicep --version
           echo "PSRULE_AZURE_BICEP_PATH=/usr/local/bin/bicep" >> "$GITHUB_ENV"
-      - uses: microsoft/ps-rule@v2.9.0
+      - uses: microsoft/ps-rule@46451b8f5258c41beb5ae69ed7190ccbba84112c # v2.9.0
         with:
           modules: PSRule.Rules.Azure
           summary: true

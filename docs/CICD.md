@@ -57,7 +57,9 @@ Every pull request to `main` goes through these gates. **Blocking** gates stop t
 
 Required status checks: `build-and-test`, `images`, `bicep`, `dependency-review`. Branches do not need to be up to date with `main` before merging (one maintainer, small pull requests).
 
-Not adopted: a code coverage threshold (it rewards writing tests for the number), third-party analyzers (SonarAnalyzer, Roslynator), action pinning by commit SHA (version tags of actions published by the tool vendors, GitHub, Microsoft, Docker and Aqua Security, kept current by Dependabot).
+Actions in `ci.yml` are pinned to a commit SHA, with the version in a comment: a tag can be moved to another commit, a SHA cannot (GitHub security hardening guide). Dependabot updates the SHA and the comment. The pin covers the action's code, not what it downloads at run time (the Trivy binary, the PSRule modules). The CD workflows still use tags.
+
+Not adopted: a code coverage threshold (it rewards writing tests for the number), third-party analyzers (SonarAnalyzer, Roslynator).
 
 ## 3. Deployment pipeline (CD)
  
