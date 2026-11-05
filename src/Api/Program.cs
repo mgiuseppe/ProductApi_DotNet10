@@ -3,6 +3,7 @@ using Api.Endpoints;
 using Api.Infrastructure;
 using Application;
 using Infrastructure;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,9 +28,11 @@ var app = builder.Build();
 await app.Services.InitializeInfrastructureAsync();
 
 // Configure the HTTP request pipeline.
+// OpenAPI document and its UI (Scalar, /scalar) in Development only: they list every endpoint and model
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 // Health checks on their own port, in every environment (not reachable through the public ingress)
 app.UseHealthChecksOnDedicatedPort();

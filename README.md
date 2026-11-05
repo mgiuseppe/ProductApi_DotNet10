@@ -17,7 +17,7 @@ This solution contains a product / order manager sample api implemented to refre
     ```
     It starts SQL Server (1433), MongoDB (27017) and the Aspire dashboard (UI 18888, OTLP 4317), then the `migrator` service applies the EF migrations and exits. The API is not started: it belongs to the `app` profile.
 2. Run `src/Api` with F5 (Visual Studio / VS Code with C# Dev Kit, `http` profile) or `dotnet run --project src/Api`
-    - API: http://localhost:5224, OpenAPI document at `/openapi/v1.json`
+    - API: http://localhost:5224, OpenAPI document at `/openapi/v1.json`, UI at `/scalar` (Development only)
     - `appsettings.Development.json` already points to the compose services (`localhost:1433`, `localhost:27017`) and sends telemetry to `http://localhost:4317`
 3. Open the Aspire dashboard at http://localhost:18888 to see traces, metrics and logs
 
