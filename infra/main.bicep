@@ -60,6 +60,19 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
     name: 'cae-${appName}-${environmentName}'
     location: location
     tags: tags
+    workspaceId: monitoring.outputs.workspaceId
+  }
+}
+
+// Telemetry of the API and logs of the environment (ADR-0020)
+module monitoring 'modules/monitoring.bicep' = {
+  scope: resourceGroup
+  params: {
+    workspaceName: 'log-${appName}-${environmentName}'
+    appInsightsName: 'appi-${appName}-${environmentName}'
+    location: location
+    tags: tags
+    publisherPrincipalIds: [apiIdentity.outputs.principalId]
   }
 }
 
@@ -129,7 +142,9 @@ module api 'modules/container-app.bicep' = {
     tags: tags
     environmentId: containerAppsEnvironment.outputs.id
     identityId: apiIdentity.outputs.id
+    identityClientId: apiIdentity.outputs.clientId
     image: apiImage
+    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     sqlConnectionString: '${sqlConnectionStringBase};User Id=${apiIdentity.outputs.clientId}'
     mongoSecretUri: keyVault.outputs.mongoSecretUri
   }

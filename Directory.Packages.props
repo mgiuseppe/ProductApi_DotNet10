@@ -7,6 +7,8 @@
 
   <ItemGroup Label="Application">
     <PackageVersion Include="AspNetCore.HealthChecks.MongoDb" Version="9.0.0" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
     <PackageVersion Include="MediatR" Version="14.2.0" />
     <PackageVersion Include="MediatR.Contracts" Version="2.0.1" />

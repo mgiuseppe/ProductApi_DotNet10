@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization.Metadata;
 using Application.Orders;
+using Azure.Identity;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -19,22 +21,33 @@ public static class DependencyInjection
     // Extension method for WebApplicationBuilder
     public static WebApplicationBuilder AddCustomOpenTelemetry(this WebApplicationBuilder builder)
     {
+        // On Azure (ADR-0020): Application Insights with the Azure Monitor distro
+        var useAzureMonitor = !string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]);
+
         // OpenTelemetry: automatic instrumentation, no custom spans needed for requests
         var otel = builder.Services.AddOpenTelemetry()
             .ConfigureResource(
                 resource => resource.AddService(builder.Environment.ApplicationName)
             )
-            .WithTracing(tracing => tracing
-                .AddAspNetCoreInstrumentation(options =>
-                    // Health check probes are frequent and identical: keep them out of traces
-                    options.Filter = context =>
-                        !context.Request.Path.StartsWithSegments(LivenessPath) &&
-                        !context.Request.Path.StartsWithSegments(ReadinessPath))
-                .AddHttpClientInstrumentation()
-                .AddEntityFrameworkCoreInstrumentation()
-                // The MongoDB driver (3.x) emits its own spans natively: subscribing to its source is enough
-                .AddSource(MongoTelemetry.ActivitySourceName)
-                .AddSource(AITelemetry.SourceName))
+            .WithTracing(tracing =>
+            {
+                tracing
+                    .AddAspNetCoreInstrumentation(options =>
+                        // Health check probes are frequent and identical: keep them out of traces
+                        options.Filter = context =>
+                            !context.Request.Path.StartsWithSegments(LivenessPath) &&
+                            !context.Request.Path.StartsWithSegments(ReadinessPath))
+                    .AddHttpClientInstrumentation()
+                    // The MongoDB driver (3.x) emits its own spans natively: subscribing to its source is enough
+                    .AddSource(MongoTelemetry.ActivitySourceName)
+                    .AddSource(AITelemetry.SourceName);
+
+                // The distro brings its own SQL client spans: with both, every query would be traced twice
+                if (!useAzureMonitor)
+                {
+                    tracing.AddEntityFrameworkCoreInstrumentation();
+                }
+            })
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
@@ -49,8 +62,16 @@ public static class DependencyInjection
                     options.IncludeFormattedMessage = true;
                 });
 
-        // export only when a collector is configured (OTEL_EXPORTER_OTLP_ENDPOINT)
-        if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+        // Sent with the API identity: local authentication is disabled on Application Insights
+        if (useAzureMonitor)
+        {
+            var clientId = builder.Configuration["AZURE_CLIENT_ID"]
+                           ?? throw new InvalidOperationException("Configuration 'AZURE_CLIENT_ID' is required with Application Insights");
+            otel.UseAzureMonitor(options =>
+                options.Credential = new ManagedIdentityCredential(ManagedIdentityId.FromUserAssignedClientId(clientId)));
+        }
+        // Locally: export only when a collector is configured (OTEL_EXPORTER_OTLP_ENDPOINT)
+        else if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
         {
             otel.UseOtlpExporter();
         }

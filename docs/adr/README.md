@@ -31,6 +31,7 @@ ADRs 0001-0009 were written retroactively on 2026-10-27 from the code, the commi
 | [0015](0015-azure-infrastructure.md) | Azure infrastructure: Bicep stacks, secrets in Key Vault, shared MongoDB cluster | Accepted, partly superseded by 0018 and 0019 |
 | [0018](0018-sql-entra-authentication-and-identity-per-workload.md) | Azure SQL with Entra authentication and one identity per workload | Accepted |
 | [0019](0019-france-central-region.md) | France Central as the Azure region | Accepted |
+| [0020](0020-application-insights-with-azure-monitor-distro.md) | Application Insights with the Azure Monitor OpenTelemetry distro | Accepted |
 
 ## Template
 
