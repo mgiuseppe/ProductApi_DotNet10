@@ -31,7 +31,7 @@ jobs:
       api: ${{ steps.names.outputs.api }}
       migrator: ${{ steps.names.outputs.migrator }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Image names (tag = commit SHA)
         id: names
@@ -62,7 +62,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/login@v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
