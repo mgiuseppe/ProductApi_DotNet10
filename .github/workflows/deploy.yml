@@ -30,7 +30,7 @@ jobs:
       JOB: caj-productapi-mig-${{ inputs.environment }}
       NEW_API_IMAGE: ${{ inputs.api-image }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: azure/login@v2
         with:
