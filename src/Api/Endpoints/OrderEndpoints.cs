@@ -13,7 +13,8 @@ public static class OrderEndpoints
         var orders = app.MapGroup("/orders").WithTags("Orders");
 
         orders.MapGet("/{id:guid}", GetOrderById).WithName(nameof(GetOrderById));
-        orders.MapGet("/", GetOrders).WithName(nameof(GetOrders));
+        orders.MapGet("/", GetOrders).WithName(nameof(GetOrders))
+            .ProducesValidationProblem();
         orders.MapGet("/{id:guid}/history", GetOrderHistory).WithName(nameof(GetOrderHistory));
         orders.MapGet("/{id:guid}/summary", SummarizeOrder).WithName(nameof(SummarizeOrder))
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -53,15 +54,12 @@ public static class OrderEndpoints
     /// <summary>List orders</summary>
     /// <remarks>One page of orders, without lines.</remarks>
     /// <param name="page">Page number, from 1. Default 1.</param>
-    /// <param name="pageSize">Orders per page, from 1. Default 10.</param>
+    /// <param name="pageSize">Orders per page, from 1 to 100. Default 10.</param>
     /// <response code="200">The orders of the page; empty after the last page.</response>
-    /// <response code="400">Page or page size lower than 1.</response>
-    internal static async Task<Results<Ok<IReadOnlyList<OrderResponse>>, BadRequest<string>>> GetOrders(
+    /// <response code="400">Page lower than 1, or page size not between 1 and 100.</response>
+    internal static async Task<Ok<IReadOnlyList<OrderResponse>>> GetOrders(
         IMediator mediator, CancellationToken ct, int page = 1, int pageSize = 10)
     {
-        if (page <= 0 || pageSize <= 0)
-            return TypedResults.BadRequest($"Page and PageSize should be greater than zero - Page: {page} - PageSize: {pageSize} ");
-
         return TypedResults.Ok(await mediator.Send(new GetOrdersListQuery(page, pageSize), ct));
     }
 

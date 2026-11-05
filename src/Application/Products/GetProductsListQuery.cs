@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,8 @@ public class GetProductsListQueryHandler(IQueryContext db) : IRequestHandler<Get
 {
     public async Task<IReadOnlyList<ProductResponse>> Handle(GetProductsListQuery request, CancellationToken cancellationToken)
     {
+        Paging.Validate(request.Page, request.PageSize);
+
         return await db.Products
             .AsNoTracking()
             .OrderBy(p => p.Name)

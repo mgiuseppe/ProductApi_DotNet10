@@ -26,6 +26,14 @@ internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExcep
                 Title = "Invalid Operation.",
                 Detail = de.Message
             }),
+            // Every invalid field at once, in the standard "errors" dictionary
+            ValidationException ve => (StatusCodes.Status400BadRequest, new ValidationProblemDetails(
+                ve.Errors.ToDictionary(e => e.Key, e => e.Value))
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+                Title = ve.Message
+            }),
             ConflictException ce => (StatusCodes.Status409Conflict, new ProblemDetails
             {
                 Status = StatusCodes.Status409Conflict,
@@ -53,7 +61,8 @@ internal sealed class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExcep
             logger.LogError(ex, "Unhandled exception on {Method} {Path}", ctx.Request.Method, ctx.Request.Path);
 
         ctx.Response.StatusCode = status;
-        await ctx.Response.WriteAsJsonAsync(problemDetails, ct);
+        // Runtime type, not ProblemDetails: otherwise the "errors" of a ValidationProblemDetails would be dropped
+        await ctx.Response.WriteAsJsonAsync(problemDetails, problemDetails.GetType(), ct);
         return true;
     }
 }

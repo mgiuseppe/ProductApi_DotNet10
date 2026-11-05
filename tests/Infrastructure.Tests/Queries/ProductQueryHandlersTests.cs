@@ -1,3 +1,5 @@
+using Application.Common;
+using Application.Common.Exceptions;
 using Application.Products;
 using Domain.Products;
 using Microsoft.EntityFrameworkCore;
@@ -76,5 +78,20 @@ public class ProductQueryHandlersTests : IAsyncLifetime
         var secondPage = (await handler.Handle(new GetProductsListQuery(Page: 2, PageSize: 2), CancellationToken.None)).ToList();
         Assert.Single(secondPage);
         Assert.Equal("Chair", secondPage[0].Name);
+    }
+
+    // Integration Test
+    [Fact]
+    public async Task GetProductsList_PageSizeOverMax_ThrowsValidationException()
+    {
+        // Arrange
+        await using var db = NewContext();
+        var handler = new GetProductsListQueryHandler(db);
+
+        // Act
+        var act = () => handler.Handle(new GetProductsListQuery(Page: 1, PageSize: Paging.MaxPageSize + 1), CancellationToken.None);
+
+        // Assert
+        await Assert.ThrowsAsync<ValidationException>(act);
     }
 }

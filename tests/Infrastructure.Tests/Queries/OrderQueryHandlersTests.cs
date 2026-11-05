@@ -93,6 +93,21 @@ public class OrderQueryHandlersTests : IAsyncLifetime
 
     // Integration Test
     [Fact]
+    public async Task GetOrdersList_PageLowerThanOne_ThrowsValidationException()
+    {
+        // Arrange
+        await using var db = NewContext();
+        var handler = new GetOrdersListQueryHandler(db);
+
+        // Act
+        var act = () => handler.Handle(new GetOrdersListQuery(Page: 0, PageSize: 10), CancellationToken.None);
+
+        // Assert
+        await Assert.ThrowsAsync<ValidationException>(act);
+    }
+
+    // Integration Test
+    [Fact]
     public async Task SummarizeOrder_WithExistingId_SendsOrderAndHistoryToChatClient()
     {
         var order = Order.Create().AddLine(Guid.NewGuid(), "Keyboard", 49.90m, 2);
