@@ -11,7 +11,7 @@ The API exposes three kinds of signals:
 
 EF Core does not create spans by itself: they come from the `OpenTelemetry.Instrumentation.EntityFrameworkCore` package (still prerelease), registered with `AddEntityFrameworkCoreInstrumentation()`. Each query becomes a child span of the request, with the SQL text.
 
-Data is exported over OTLP only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; without it nothing is sent, so the API runs without a collector.
+Where data goes depends on configuration: to Application Insights when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set (Azure, see [Azure: Application Insights](#azure-application-insights)), otherwise over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; with neither nothing is sent, so the API runs without a collector.
 
 ### Logs
 `UseOtlpExporter()` exports all three signals, logs included: every `ILogger` entry goes to the backend with the `TraceId`/`SpanId` of the current request, so from a log you can jump to its trace (and the `traceId` returned in a 500 ProblemDetails leads to both).
@@ -59,6 +59,20 @@ Where to set them:
   ```
 - one-off run from the shell: `$env:OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"; dotnet run --project src/Api` (PowerShell)
 - deployed environments: environment variables of the host/container. Avoid `appsettings.json`, otherwise every environment exports to the same endpoint.
+
+### Azure: Application Insights
+On Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro ([ADR-0020](adr/0020-application-insights-with-azure-monitor-distro.md)), instead of OTLP:
+
+| Key | Set by | Effect |
+|---|---|---|
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Bicep (`container-app.bicep`) | enables the distro; not a secret, because local authentication is disabled |
+| `AZURE_CLIENT_ID` | Bicep | client id of the API identity, which sends the telemetry with Entra authentication (*Monitoring Metrics Publisher*) |
+
+Locally neither is set, so nothing goes to Azure. The distro adds its own instrumentation (ASP.NET Core, `HttpClient`, SQL client) and Live Metrics; the sources and meters registered above are exported too, except the EF Core instrumentation, which would trace every query a second time next to the SQL client span.
+
+The distro samples traces: by default at most 5 per second (rate limited), so on Azure not every request has a trace; metrics are not sampled.
+
+Console and system logs of the Container Apps environment (the migrator included, and containers that fail to start) go to the Log Analytics workspace of the environment: tables `ContainerAppConsoleLogs` and `ContainerAppSystemLogs`. The workspace has a daily cap of 0.1 GB: over it, ingestion stops until the next day.
 
 ### Privacy
 Sensitive data is hidden by default (privacy by default, GDPR):

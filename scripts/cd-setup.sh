@@ -96,35 +96,45 @@ done
 # 2. Azure identities for GitHub Actions
 # ---------------------------------------------------------------------------------------------------------
 
-# The Bicep template grants the Container App's managed identity the "Key Vault Secrets User" role, so the
-# deployment identity must be allowed to create role assignments. "Role Based Access Control Administrator"
-# allows that, but on its own it could also grant itself Owner. This ABAC condition narrows it down:
-# it may write or delete role assignments only when the role is Key Vault Secrets User (role definition id
-# 4633458b-..., the same in every tenant). Read it as:
-#   (the action is not "write an assignment" OR the requested role is Key Vault Secrets User)
-#   AND (the action is not "delete an assignment" OR the existing role is Key Vault Secrets User)
+# The Bicep template grants the workload identities "Key Vault Secrets User" (read the MongoDB secret) and
+# "Monitoring Metrics Publisher" (send telemetry to Application Insights, ADR-0020), so the deployment identity
+# must be allowed to create role assignments. "Role Based Access Control Administrator" allows that, but on its
+# own it could also grant itself Owner. This ABAC condition narrows it down: it may write or delete role
+# assignments only for these two roles (role definition ids, the same in every tenant). Read it as:
+#   (the action is not "write an assignment" OR the requested role is one of the two)
+#   AND (the action is not "delete an assignment" OR the existing role is one of the two)
 # The "!" is safe inside double quotes here because a script runs without history expansion; pasted into an
 # interactive bash it would be expanded, which is one of the reasons this is a script and not a snippet.
 KV_SECRETS_USER=4633458b-17de-408a-b874-0445c86b69e6
-CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$KV_SECRETS_USER})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$KV_SECRETS_USER}))"
+MONITORING_METRICS_PUBLISHER=3913510d-42f4-4e42-8a64-420c390055eb
+GRANTABLE_ROLES="$KV_SECRETS_USER, $MONITORING_METRICS_PUBLISHER"
+CONDITION="((!(ActionMatches{'Microsoft.Authorization/roleAssignments/write'})) OR (@Request[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$GRANTABLE_ROLES})) AND ((!(ActionMatches{'Microsoft.Authorization/roleAssignments/delete'})) OR (@Resource[Microsoft.Authorization/roleAssignments:RoleDefinitionId] ForAnyOfAnyValues:GuidEquals {$GRANTABLE_ROLES}))"
 
-# Grants a role at subscription scope unless the identity already has it. "az role assignment create"
-# fails with "RoleAssignmentExists" on a second run, so check with "list" first.
-# Extra arguments (the condition) are passed through to "create".
+# Grants a role at subscription scope, with an optional ABAC condition. "az role assignment create" fails
+# with "RoleAssignmentExists" on a second run, so check with "list" first. An existing assignment with a
+# different condition (an older version of this script) is deleted and created again.
 grant_role() {
-  local sp_id=$1 role=$2
-  shift 2
-  local existing
+  local sp_id=$1 role=$2 condition=${3:-}
+  local existing existing_condition
   existing=$(az role assignment list --assignee "$sp_id" --role "$role" --scope "$SCOPE" --query "[0].id" -o tsv | remove_carriage_return)
   if [[ -n "$existing" ]]; then
-    info "Role '$role': already assigned"
-    return
+    existing_condition=$(az role assignment list --assignee "$sp_id" --role "$role" --scope "$SCOPE" --query "[0].condition" -o tsv | remove_carriage_return)
+    if [[ "$existing_condition" == "$condition" ]]; then
+      info "Role '$role': already assigned"
+      return
+    fi
+    az role assignment delete --ids "$existing" >/dev/null
+    info "Role '$role': condition changed, assigning again"
+  fi
+  local condition_args=()
+  if [[ -n "$condition" ]]; then
+    condition_args=(--condition "$condition" --condition-version 2.0)
   fi
   # --assignee-object-id + --assignee-principal-type instead of --assignee: with --assignee, az looks the
   # principal up in the directory, and a service principal created seconds ago is often not visible yet
   # (directory replication), so the call fails. With the object id and the type, no lookup is needed.
   az role assignment create --assignee-object-id "$sp_id" --assignee-principal-type ServicePrincipal \
-    --scope "$SCOPE" --role "$role" "$@" >/dev/null
+    --scope "$SCOPE" --role "$role" "${condition_args[@]}" >/dev/null
   info "Role '$role': assigned"
 }
 
@@ -187,12 +197,12 @@ for env in "${ENVIRONMENTS[@]}"; do
   # Roles at subscription scope, because the deployment stacks create their own resource groups:
   # - Contributor: create and delete resources
   # - Azure Deployment Stack Owner: manage deployment stacks, including their deny settings
-  # - Role Based Access Control Administrator, with the condition above: only Key Vault Secrets User
+  # - Role Based Access Control Administrator, with the condition above: only the two workload roles
   # Staging and production get the same roles on the same subscription: keeping them apart is a convention
   # of the workflows, not something Azure enforces.
   grant_role "$sp_id" Contributor
   grant_role "$sp_id" "Azure Deployment Stack Owner"
-  grant_role "$sp_id" "Role Based Access Control Administrator" --condition "$CONDITION" --condition-version 2.0
+  grant_role "$sp_id" "Role Based Access Control Administrator" "$CONDITION"
 done
 
 # ---------------------------------------------------------------------------------------------------------

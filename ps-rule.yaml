@@ -30,7 +30,8 @@ rule:
     - Azure.ContainerApp.MinReplicas
     - Azure.Cosmos.MongoAvailabilityZone
     - Azure.Cosmos.MongoEntraID
-    # Cost: Defender for SQL and vulnerability assessment are paid; auditing and Key Vault logs need Log Analytics
+    # Cost: Defender for SQL and vulnerability assessment are paid; SQL auditing and Key Vault logs are not sent to
+    # the workspace, to stay under its daily cap (ADR-0020)
     - Azure.SQL.DefenderCloud
     - Azure.SQL.VAScan
     - Azure.SQL.Auditing

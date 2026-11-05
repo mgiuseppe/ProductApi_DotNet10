@@ -1,13 +1,17 @@
-// The API: public ingress on 8080, health probes on 8081 (not exposed by the ingress), MongoDB secret from Key Vault.
+// The API: public ingress on 8080, health probes on 8081 (not exposed by the ingress), MongoDB secret from Key Vault,
+// telemetry to Application Insights (ADR-0020).
 param name string
 param location string
 param tags object
 param environmentId string
 param identityId string
+param identityClientId string
 param image string
 @description('Azure SQL connection string, without secret: the identity signs in (ADR-0018).')
 param sqlConnectionString string
 param mongoSecretUri string
+@description('Application Insights connection string, not a secret: ingestion needs Entra authentication (ADR-0020).')
+param appInsightsConnectionString string
 
 resource app 'Microsoft.App/containerApps@2026-07-01' = {
   name: name
@@ -50,6 +54,8 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
           env: [
             { name: 'ConnectionStrings__DbConnection', value: sqlConnectionString }
             { name: 'ConnectionStrings__MongoDb', secretRef: 'mongo-connection-string' }
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
+            { name: 'AZURE_CLIENT_ID', value: identityClientId } // the identity that sends the telemetry
           ]
           probes: [
             {

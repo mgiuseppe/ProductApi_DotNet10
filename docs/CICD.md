@@ -86,7 +86,7 @@ flowchart LR
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
 - **Secrets:** Azure SQL has no password: the API and the migrator sign in with their own user-assigned identity, and the deploy workflow creates their database users with `azure/sql-action` ([ADR-0018](adr/0018-sql-entra-authentication-and-identity-per-workload.md)). The MongoDB password is a GitHub secret passed to Bicep, which writes the connection string into the Key Vault of the environment, read by both identities ([ADR-0015](adr/0015-azure-infrastructure.md)).
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
-- **Telemetry:** OpenTelemetry exports to Azure Monitor / Application Insights in production. The Aspire dashboard used in `docker-compose.yml` is a development tool only.
+- **Telemetry:** on Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro; the Container Apps environment sends console and system logs to the same Log Analytics workspace ([ADR-0020](adr/0020-application-insights-with-azure-monitor-distro.md)). The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
 ## 5. Infrastructure
  

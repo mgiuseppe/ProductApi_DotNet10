@@ -89,7 +89,7 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 
 ## Observability
 
-OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), mapped only in Development ([Observability](Observability.md)).
+OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development) and to Application Insights with the Azure Monitor distro on Azure ([ADR-0020](adr/0020-application-insights-with-azure-monitor-distro.md)). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), mapped only in Development ([Observability](Observability.md)).
 
 ## Testing
 
@@ -131,3 +131,4 @@ See [TestingStrategy](TestingStrategy.md).
 | [0015](adr/0015-azure-infrastructure.md) | Azure: Bicep deployment stacks that never delete on deploy, secrets in a Key Vault per environment, one free MongoDB cluster shared by the environments |
 | [0018](adr/0018-sql-entra-authentication-and-identity-per-workload.md) | Azure SQL with Entra authentication only: one identity per workload with least rights, database users created by the deploy workflow |
 | [0019](adr/0019-france-central-region.md) | France Central as the Azure region: the subscription cannot create Azure SQL servers in North Europe |
+| [0020](adr/0020-application-insights-with-azure-monitor-distro.md) | Application Insights per environment, the API exports with the Azure Monitor OpenTelemetry distro |
