@@ -40,7 +40,7 @@ Every pull request to `main` goes through these gates. **Blocking** gates stop t
 |---|---|---|---|
 | Format | `dotnet format --verify-no-changes` | `ci.yml` / `build-and-test` | Yes |
 | Build, warnings as errors | `dotnet build -warnaserror` | `build-and-test` | Yes |
-| Code style in the build | `EnforceCodeStyleInBuild` (`Directory.Build.props`) and `.editorconfig`; today IDE0005, unnecessary `using`. IDE0005 runs in the build only with `GenerateDocumentationFile` (CS1591, missing XML comments, is suppressed). Migrations are generated code and excluded | `build-and-test` | Yes |
+| Code style in the build | `EnforceCodeStyleInBuild` (`Directory.Build.props`) and `.editorconfig`; today IDE0005, unnecessary `using`. IDE0005 runs in the build only with `GenerateDocumentationFile` (CS1591, missing XML comments, is suppressed; in `Api` also CS1573, because endpoint methods document only the request parameters). Migrations are generated code and excluded | `build-and-test` | Yes |
 | Unit tests | `Domain.Tests`, `Application.Tests` | `build-and-test` | Yes |
 | Integration tests | `Infrastructure.Tests` on SQL Server via Testcontainers (Docker on the runner) | `build-and-test` | Yes |
 | Vulnerable packages, transitive included | NuGet audit during `dotnet restore` (NU1901-NU1904, any severity from low); the warnings are replayed by `dotnet build -warnaserror`, which fails. If the vulnerability source is unreachable, NU1900 fails the build too | `build-and-test` | Yes |
