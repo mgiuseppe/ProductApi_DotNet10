@@ -36,6 +36,8 @@ rule:
     - Azure.SQL.VAScan
     - Azure.SQL.Auditing
     - Azure.KeyVault.Logs
+    # Cost: replicating the Log Analytics workspace to a second region is billed per GB (ADR-0020)
+    - Azure.Log.Replication
     # Public by design: the API is public, consumption Container Apps have no fixed outbound IP (no VNet)
     - Azure.ContainerApp.PublicAccess
     - Azure.ContainerApp.RestrictIngress
