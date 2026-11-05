@@ -12,7 +12,8 @@ public static class ProductEndpoints
         var products = app.MapGroup("/products").WithTags("Products");
 
         products.MapGet("/{id:guid}", GetProductById).WithName(nameof(GetProductById));
-        products.MapGet("/", GetProducts).WithName(nameof(GetProducts));
+        products.MapGet("/", GetProducts).WithName(nameof(GetProducts))
+            .ProducesProblem(StatusCodes.Status400BadRequest);
         products.MapPost("/", CreateProduct).WithName(nameof(CreateProduct))
             .ProducesProblem(StatusCodes.Status400BadRequest);
         products.MapPut("/{id:guid}", UpdateProduct).WithName(nameof(UpdateProduct))
@@ -37,15 +38,12 @@ public static class ProductEndpoints
     /// <summary>List products</summary>
     /// <remarks>One page of products. Page and page size start at 1.</remarks>
     /// <param name="page">Page number, from 1. Default 1.</param>
-    /// <param name="pageSize">Products per page, from 1. Default 10.</param>
+    /// <param name="pageSize">Products per page, from 1 to 100. Default 10.</param>
     /// <response code="200">The products of the page; empty after the last page.</response>
-    /// <response code="400">Page or page size lower than 1.</response>
-    internal static async Task<Results<Ok<IReadOnlyList<ProductResponse>>, BadRequest<string>>> GetProducts(
+    /// <response code="400">Page lower than 1, or page size not between 1 and 100.</response>
+    internal static async Task<Ok<IReadOnlyList<ProductResponse>>> GetProducts(
         IMediator mediator, CancellationToken ct, int page = 1, int pageSize = 10)
     {
-        if (page <= 0 || pageSize <= 0)
-            return TypedResults.BadRequest($"Page and PageSize should be greater than zero - Page: {page} - PageSize: {pageSize} ");
-
         return TypedResults.Ok(await mediator.Send(new GetProductsListQuery(page, pageSize), ct));
     }
 

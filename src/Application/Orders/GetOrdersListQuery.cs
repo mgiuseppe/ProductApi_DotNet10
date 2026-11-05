@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Common.Interfaces;
 using Application.Responses;
 using MediatR;
@@ -11,6 +12,8 @@ public class GetOrdersListQueryHandler(IQueryContext db) : IRequestHandler<GetOr
 {
     public async Task<IReadOnlyList<OrderResponse>> Handle(GetOrdersListQuery request, CancellationToken cancellationToken)
     {
+        Paging.Validate(request.Page, request.PageSize);
+
         return await db.Orders
                         .AsNoTracking()
                         .OrderBy(o => o.Id)
