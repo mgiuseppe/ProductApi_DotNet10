@@ -14,7 +14,7 @@ public static class OrderEndpoints
             return o != null ? Results.Ok(o) : Results.NotFound();
         });
 
-        app.MapGet("/orders", async (int page, int pageSize, IMediator mediator, CancellationToken ct) =>
+        app.MapGet("/orders", async (IMediator mediator, CancellationToken ct, int page = 1, int pageSize = 10) =>
         {
             if (page <= 0 || pageSize <= 0)
                 return Results.BadRequest($"Page and PageSize should be greater than zero - Page: {page} - PageSize: {pageSize} ");
