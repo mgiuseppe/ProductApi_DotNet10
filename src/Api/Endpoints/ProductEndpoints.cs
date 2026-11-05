@@ -14,7 +14,7 @@ public static class ProductEndpoints
             return p != null ? Results.Ok(p) : Results.NotFound();
         });
 
-        app.MapGet("/products", async (int page, int pageSize, IMediator mediator, CancellationToken ct) =>
+        app.MapGet("/products", async (IMediator mediator, CancellationToken ct, int page = 1, int pageSize = 10) =>
         {
             if (page <= 0 || pageSize <= 0)
                 return Results.BadRequest($"Page and PageSize should be greater than zero - Page: {page} - PageSize: {pageSize} ");
