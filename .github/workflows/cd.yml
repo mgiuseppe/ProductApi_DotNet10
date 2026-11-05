@@ -40,7 +40,7 @@ jobs:
           echo "api=$prefix-api:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
           echo "migrator=$prefix-migrator:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
