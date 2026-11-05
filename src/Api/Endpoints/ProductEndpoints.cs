@@ -13,7 +13,7 @@ public static class ProductEndpoints
 
         products.MapGet("/{id:guid}", GetProductById).WithName(nameof(GetProductById));
         products.MapGet("/", GetProducts).WithName(nameof(GetProducts))
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem();
         products.MapPost("/", CreateProduct).WithName(nameof(CreateProduct))
             .ProducesProblem(StatusCodes.Status400BadRequest);
         products.MapPut("/{id:guid}", UpdateProduct).WithName(nameof(UpdateProduct))

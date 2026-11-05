@@ -14,7 +14,7 @@ public static class OrderEndpoints
 
         orders.MapGet("/{id:guid}", GetOrderById).WithName(nameof(GetOrderById));
         orders.MapGet("/", GetOrders).WithName(nameof(GetOrders))
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesValidationProblem();
         orders.MapGet("/{id:guid}/history", GetOrderHistory).WithName(nameof(GetOrderHistory));
         orders.MapGet("/{id:guid}/summary", SummarizeOrder).WithName(nameof(SummarizeOrder))
             .ProducesProblem(StatusCodes.Status404NotFound);

@@ -23,29 +23,41 @@ public class PagingTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void Validate_PageLowerThanOne_ThrowsValidationException(int page)
+    public void Validate_PageLowerThanOne_ThrowsWithPageError(int page)
     {
         // Arrange (nothing to arrange)
 
         // Act
-        var exception = Record.Exception(() => Paging.Validate(page, pageSize: 10));
+        var exception = Assert.Throws<ValidationException>(() => Paging.Validate(page, pageSize: 10));
 
         // Assert
-        Assert.IsType<ValidationException>(exception);
+        Assert.Equal(["page"], exception.Errors.Keys);
     }
 
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
     [InlineData(Paging.MaxPageSize + 1)]
-    public void Validate_PageSizeOutOfRange_ThrowsValidationException(int pageSize)
+    public void Validate_PageSizeOutOfRange_ThrowsWithPageSizeError(int pageSize)
     {
         // Arrange (nothing to arrange)
 
         // Act
-        var exception = Record.Exception(() => Paging.Validate(page: 1, pageSize));
+        var exception = Assert.Throws<ValidationException>(() => Paging.Validate(page: 1, pageSize));
 
         // Assert
-        Assert.IsType<ValidationException>(exception);
+        Assert.Equal(["pageSize"], exception.Errors.Keys);
+    }
+
+    [Fact]
+    public void Validate_PageAndPageSizeInvalid_ThrowsWithBothErrors()
+    {
+        // Arrange (nothing to arrange)
+
+        // Act
+        var exception = Assert.Throws<ValidationException>(() => Paging.Validate(page: 0, pageSize: 0));
+
+        // Assert
+        Assert.Equal(["page", "pageSize"], exception.Errors.Keys.Order());
     }
 }
