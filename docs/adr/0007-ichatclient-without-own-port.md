@@ -19,3 +19,4 @@
 ## Alternatives considered
 - **Use-case port** (`IOrderSummarizer`): hides the LLM and controls which fields leave the system. Worth it if a non-LLM implementation is expected.
 - **Generic port** (`AnswerAsync(prompt)`): adds a type without hiding anything more than `IChatClient`.
+- **Prompts loaded from configuration or a database**, editable by an administrator: more complexity and out of scope. The parameters still come from code, and a prompt changed outside code can drift between environments. A prompt affects output quality, cost and latency, so it needs the same review as code.
