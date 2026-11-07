@@ -12,7 +12,8 @@ x-connection-strings: &connection-strings
 
 services:
   sqlserver:
-    image: mcr.microsoft.com/mssql/server:2025-latest
+    # Pinned cumulative update, updated by Dependabot. Keep tests/Infrastructure.Tests/TestDatabase.cs in sync.
+    image: mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "ProductApi!Dev2026" # must meet the SQL Server complexity policy; the database is created by the migrator

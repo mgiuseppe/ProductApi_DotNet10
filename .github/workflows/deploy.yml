@@ -30,9 +30,9 @@ jobs:
       JOB: caj-productapi-mig-${{ inputs.environment }}
       NEW_API_IMAGE: ${{ inputs.api-image }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: azure/login@v3
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -78,7 +78,7 @@ jobs:
 
       # Connection Timeout 60: the serverless database may be paused and takes up to a minute to resume
       - name: Database users
-        uses: azure/sql-action@v2.4
+        uses: azure/sql-action@eb1f9a80487ca52b90f41a473f53da4943526994 # v2.4
         with:
           connection-string: ${{ env.SQL_CONNECTION_STRING }}
           path: infra/sql/database-users.sql

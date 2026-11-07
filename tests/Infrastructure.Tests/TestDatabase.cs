@@ -18,7 +18,8 @@ namespace Infrastructure.Tests;
 /// </summary>
 internal sealed class TestDatabase : IAsyncDisposable
 {
-    private static readonly MsSqlContainer Container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2025-latest").Build();
+    // Same image as docker-compose.yml, kept in sync by hand: Dependabot updates only the compose file
+    private static readonly MsSqlContainer Container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2025-CU10-ubuntu-24.04").Build();
     private static readonly Lazy<Task> Started = new(() => Container.StartAsync());
     private static readonly ConcurrentBag<TestDatabase> Pool = [];
 
