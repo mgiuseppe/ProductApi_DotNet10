@@ -1,135 +1,84 @@
 # Product API
 
-This solution contains a product / order manager sample api implemented to refresh .NET knowledge.
+[![CI](https://img.shields.io/github/actions/workflow/status/mgiuseppe/ProductApi_DotNet10/ci.yml?branch=main&event=push&label=CI)](https://github.com/mgiuseppe/ProductApi_DotNet10/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
 
-## How To Run
+A product, order and voucher API, built to refresh .NET skills end to end:
 
-### Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Docker Desktop (running)
-- (optional) `dotnet-ef` to create/apply migrations from your machine: `dotnet tool install --global dotnet-ef`
+- **.NET 10**, Clean Architecture, DDD aggregates, CQRS with MediatR
+- **SQL Server** (EF Core) for the aggregates, **MongoDB** for the order history
+- **OpenTelemetry**, with Application Insights on Azure
+- one **LLM** feature through `IChatClient`: a summary of an order for support operators
+- **CI/CD** with GitHub Actions, **infrastructure as code** with Bicep on Azure Container Apps
+- developed with **Claude Code**: project rules in [CLAUDE.md](CLAUDE.md), review agents and a commit skill in [.claude/](.claude/)
 
-### Develop: infrastructure in Docker, API with F5
-
-1. Start the infrastructure
-    ```bash
-    docker compose up -d
-    ```
-    It starts SQL Server (1433), MongoDB (27017) and the Aspire dashboard (UI 18888, OTLP 4317), then the `migrator` service applies the EF migrations and exits. The API is not started: it belongs to the `app` profile.
-2. Run `src/Api` with F5 (Visual Studio / VS Code with C# Dev Kit, `http` profile) or `dotnet run --project src/Api`
-    - API: http://localhost:5224, OpenAPI document at `/openapi/v1.json`, UI at `/scalar` (Development only)
-    - `appsettings.Development.json` already points to the compose services (`localhost:1433`, `localhost:27017`) and sends telemetry to `http://localhost:4317`
-3. Open the Aspire dashboard at http://localhost:18888 to see traces, metrics and logs
-
-When you add a migration, apply it from your machine (faster than rebuilding the migrator image):
-```bash
-dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Api
-dotnet ef database update --project src/Infrastructure --startup-project src/Api
+```mermaid
+flowchart LR
+    client([Client]) --> api[API<br/>Container App]
+    api --> sql[(Azure SQL<br/>orders, products, vouchers)]
+    api --> mongo[(MongoDB<br/>order history)]
+    api --> llm[OpenAI]
+    api -.telemetry.-> appi[Application Insights]
+    migrator[Migrator<br/>Container Apps job] --> sql
+    gh[GitHub Actions] -->|images| ghcr[GHCR]
+    gh -->|Bicep, deploy| api
+    gh --> migrator
 ```
 
-### Check Before Pushing: Run everything in Docker (profile `app`)
+## Project structure
 
-The `api` service is in the `app` profile, so it starts only when the profile is enabled:
-```bash
-docker compose --profile app up --build -d
-```
-- API: http://localhost:8080, Aspire dashboard: http://localhost:18888
-- `--build` rebuilds the API and migrator images with your latest code
-- Useful to check the containerized app before pushing, or to try the app without the SDK.
-
-### Ports and `.env`
-
-Host ports default to the ones above. To change them, copy `.env.example` to `.env` (gitignored) and edit it: Compose reads it automatically.
-If you change `SQLSERVER_PORT`, `MONGO_PORT` or `OTLP_PORT`, update `src/Api/appsettings.Development.json` as well, otherwise the F5 API won't find them.
-
-The order summary (`GET /orders/{id}/summary`) calls OpenAI. With F5 the key comes from user-secrets (`dotnet user-secrets set "OpenAI:ApiKey" "<key>" --project src/Api`); the containerized API can't see user-secrets, so set `OPENAI_API_KEY` in `.env`. Without a key everything else still works and only the summary endpoint fails.
-
-### Stop / reset
-
-```bash
-docker compose --profile app down     # stop and remove the containers (data is kept in volumes)
-docker compose --profile app down -v  # also delete the SQL Server and Mongo data
-```
-`--profile app` is needed to also remove the `api` container if it was started.
-
-## Contributing: GitHub Flow
-
-`main` is protected: every change goes through a branch and a pull request, merged with squash ([CONTRIBUTING](CONTRIBUTING.md)).
-
-Create the branch before starting the work. Commits go through Claude Code with `/verify-and-commit`, so that every commit passes the quality gate (format, build, tests, migration checks); when asked, the skill also pushes the branch and opens the pull request.
-
-```bash
-git switch main && git pull
-git switch -c feature/<short-name>          # or fix/, docs/, chore/
-# ...work, then in Claude Code: /verify-and-commit (ask it to push and open the PR)...
-gh pr merge --squash --delete-branch        # after reading the diff in the pull request
+```text
+src/
+  Domain/           aggregates, invariants, domain events
+  Application/      one command or query per use case, with its handler
+  Infrastructure/   EF Core, repositories, MongoDB, LLM client
+  Api/              minimal API endpoints, exception handling, telemetry
+tests/              Domain.Tests, Application.Tests, Infrastructure.Tests (Testcontainers)
+infra/              Bicep templates of the Azure environments
+scripts/            one-off setup of Azure and GitHub for CD
+.github/workflows/  CI, CD, teardown
+.claude/            Claude Code review agents and commit skill
+docs/               architecture, ADRs, topic documents
 ```
 
-### Repository administration
+## Run it locally
 
-Repository protection and settings, Azure identities, GitHub environments and secrets for CD: see [MAINTAINING.md](MAINTAINING.md).
+Requirements: [.NET 10 SDK](https://dotnet.microsoft.com/download) and Docker Desktop.
 
-## Tools and vscodes plugins
+```bash
+docker compose up -d
+```
 
-vs codes plugins:
-- C# Dev Kit - Adds .net related right clicks options to the folder explorer
-- REST Client - lets you use .http files to test api requests
+```bash
+dotnet run --project src/Api
+```
 
-## Working with Claude Code
+The first command starts SQL Server, MongoDB and the Aspire dashboard, and applies the migrations. The second starts the API (or press F5).
 
-The repository is set up for agentic development with Claude Code:
-- [CLAUDE.md](CLAUDE.md): commands, layer rules, conventions and workflow rules the agent follows
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the map of the solution
-- [docs/adr/](docs/adr/README.md): Architecture Decision Records, one per decision
-- `.claude/skills/verify-and-commit`: format, build, unit and integration tests, then commit (`/verify-and-commit`)
-- `.claude/agents/architecture-reviewer`: subagent that reviews a diff against the layer rules and the ADRs
+- API reference (Scalar): http://localhost:5224/scalar
+- Traces, metrics and logs (Aspire dashboard): http://localhost:18888
 
-## Clean Architecture
+![Scalar API reference](docs/images/scalar.jpg)
 
-See [Clean Architecture](docs/CleanArchitecture.md)
+The order summary needs an OpenAI key: `dotnet user-secrets set "OpenAI:ApiKey" "<key>" --project src/Api`. Without it, only that endpoint fails.
 
-## CQRS and MediatR
-- MediatR was introduced to practice the pattern. With this scope (few aggregates, one consumer) a basic service layer would need less code than commands. Its concrete advantage is pipeline behaviors.
-- `Behaviors/` contains a commented-out `UnitOfWorkBehavior` for reference, not registered: it would make the commit implicit and invisible from the handlers.
-- Query handlers read through `IQueryContext` (EF Core `DbSet`s) and bypass repositories, because a read does not need to protect invariants. As a consequence, Application references the EF Core package (never the Infrastructure project).
-- Query handler tests live in `Infrastructure.Tests`: they need a real `AppDbContext` to verify the SQL translation, and the context is internal to Infrastructure.
-- Endpoints contain no try/catch: `ProblemDetailsExceptionHandler` (a global `IExceptionHandler`) maps `NotFoundException`, `DomainException` and `ConflictException` to 404, 400 and 409.
+To run the API in Docker as well: `docker compose --profile app up --build -d` (API on http://localhost:8080). Ports can be changed in `.env` (see `.env.example`).
 
-See [DomainEventsHandling](docs/DomainEventsHandling.md)
+### A basic flow
 
-## Testing Strategy
+From Scalar, or with [ApiOrders.http](src/Api/TestsHttp/ApiOrders.http):
 
-Infrastructure.Tests start a SQL Server container with Testcontainers (about 1.5 GB image, 2 GB of RAM): Docker must be running.
+1. `POST /products`: create a product.
+2. `POST /orders`: create an order with a line for that product.
+3. `POST /orders/{id}/confirm`: confirm it; this writes an entry in the order history.
+4. `GET /orders/{id}/history`: the history, from MongoDB.
+5. `GET /orders/{id}/summary`: the LLM summary of the order and its history.
 
-See [Testing Strategy](docs/TestingStrategy.md)
+## Contributing
 
-## EFCore
+- [CONTRIBUTING](CONTRIBUTING.md): workflow, build, tests, conventions
+- [MAINTAINING](MAINTAINING.md): repository and Azure administration
+- [Architecture](docs/ARCHITECTURE.md) and [decision records](docs/adr/README.md)
 
-See [EFCore](docs/EFCore.md)
+## Documentation
 
-## Observability
-
-- OpenTelemetry traces, metrics and logs (automatic instrumentation), exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set
-- Custom metrics: meter `ProductApi.Orders` with `orders.confirmed` and `vouchers.redemption.concurrent_conflicts`
-- Health checks: `/alive` (liveness) and `/health` (readiness, includes the databases), excluded from tracing, served only on the dedicated port `HealthChecks:Port` (5225 with F5, 8081 in Docker)
-
-See [Observability](docs/Observability.md)
-
-## AI
-
-- `GET /orders/{id}/summary`: an LLM summary of an order and its history, for support operators
-- `IChatClient` (Microsoft.Extensions.AI) with OpenAI; the API key comes from user-secrets (F5) or `.env` (Docker)
-- LLM calls traced with OpenTelemetry (GenAI conventions, no prompt contents)
-
-See [AI](docs/AI.md)
-
-## Domain Simplifications
-
-See [Domain Simplifications](docs/DomainSimplifications.md)
-
-## CI/CD
-see [CICD](docs/CICD.md)
-
-## TODO
-- add .editorconfig
-- optional git hooks (Husky.Net) as a second line behind `/verify-and-commit`
+Topic documents (EF Core, observability, CI/CD, testing, AI...) are in [docs/](docs/).
