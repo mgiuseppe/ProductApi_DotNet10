@@ -78,6 +78,7 @@ flowchart LR
 - **Order in each environment** (`deploy.yml`): the stack is deployed with the API image already running and the new migrator image; the migrator job runs and must succeed; only then the API gets the new image; a smoke test calls the public URL.
 - **Staging first,** then a manual approval, then production with the **same image** and the same steps.
 - **Rollback** means redeploying the previous image tag. The database is not rolled back (see Migrations).
+- **Status:** the pipeline has run end to end on staging (infrastructure, database users, migrations, API, smoke test, telemetry). Production has never been deployed: the free trial subscription allows one Container Apps environment per region (`MaxNumberOfRegionalEnvironmentsInSubExceeded`), and staging uses it. The production steps are the same as staging's, so they are expected to work on a subscription without that quota. The environments are ephemeral: they are torn down after each verification and CD is off (`CD_ENABLED=false`) in between.
 
 ## 4. Environments, identity and secrets
  

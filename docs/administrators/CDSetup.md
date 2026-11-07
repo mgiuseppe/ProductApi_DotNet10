@@ -37,3 +37,4 @@ Optional but recommended: a budget on the subscription with alerts (Cost Managem
 
 - Turn CD off: `gh variable set CD_ENABLED --repo mgiuseppe/ProductApi_DotNet10 --body false`.
 - Delete everything: Actions → Teardown → `everything` (type it twice).
+- If production has never been deployed, `everything` fails on the production job (no stack, and it waits for an approval) and skips the shared stack. Run Teardown → `staging` instead, then delete the shared stack: `az stack sub delete --name productapi-shared --action-on-unmanage deleteAll --yes`.
