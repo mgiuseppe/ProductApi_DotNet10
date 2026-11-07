@@ -21,7 +21,7 @@ public static class DependencyInjection
     // Extension method for WebApplicationBuilder
     public static WebApplicationBuilder AddCustomOpenTelemetry(this WebApplicationBuilder builder)
     {
-        // On Azure (ADR-0020): Application Insights with the Azure Monitor distro
+        // On Azure (ADR-0013): Application Insights with the Azure Monitor distro
         var useAzureMonitor = !string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]);
 
         // OpenTelemetry: automatic instrumentation, no custom spans needed for requests

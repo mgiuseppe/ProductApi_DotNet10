@@ -1,21 +1,23 @@
 # 0003. CQRS with MediatR
 
 - Status: Accepted
-- Date: 2026-10-02
+- Date: 2026-11-07
 
 ## Context
-The first version used application services (`IOrderService`). Writes need aggregates and invariants; reads only need projections, often of several tables, and loading aggregates through repositories for them is wasteful.
+Writes need aggregates and their rules. Reads only need projections, often across tables: loading aggregates for them is wasteful.
 
 ## Decision
-Each use case is a MediatR request (`XxxCommand` or `XxxQuery`) with its handler in the same file. Command handlers use repositories and the unit of work. Query handlers read through `IQueryContext`, which exposes the `DbSet`s of `AppDbContext`, and project directly to response DTOs.
+- Each use case is a MediatR request (`XxxCommand` or `XxxQuery`) with its handler in the same file.
+- Command handlers use repositories and the unit of work ([0004](0004-repositories-and-unit-of-work.md)).
+- Query handlers read through `IQueryContext`, which exposes the `DbSet`s, and project straight to response DTOs.
 
 ## Consequences
-- Reads are optimised independently of the domain model.
-- Pipeline behaviors become available for cross-cutting concerns (a `UnitOfWorkBehavior` is kept commented out as a reference, not registered, so the commit stays explicit).
-- Application references the EF Core package (never the Infrastructure project).
-- Query handler tests need a real `AppDbContext`, so they live in `Infrastructure.Tests` ([0008](0008-integration-tests-with-testcontainers.md)).
-- For three aggregates and one consumer, MediatR adds more code than a service layer: it was adopted to practise the pattern.
+- Reads are optimised without touching the domain model.
+- Pipeline behaviours are available for cross-cutting concerns.
+- Application references the EF Core package, never the Infrastructure project.
+- Query handler tests need a real database, so they live in `Infrastructure.Tests` ([0010](0010-integration-tests-with-testcontainers.md)).
+- At this size MediatR is more code than a service layer: it is here to practise the pattern.
 
 ## Alternatives considered
-- **Application services**: less code at this size; no pipeline.
-- **Separate read model / read database**: unjustified without scale or different read shapes.
+- **Application services**: less code, no pipeline.
+- **Separate read model or database**: not justified without scale.

@@ -1,4 +1,4 @@
-// Key Vault of one environment with the MongoDB connection string (ADR-0015; Azure SQL needs no secret, ADR-0018).
+// Key Vault of one environment with the MongoDB connection string (ADR-0012; Azure SQL needs no secret).
 // The Container App and the migrator job read it through their identities, granted Key Vault Secrets User here.
 param name string
 param location string

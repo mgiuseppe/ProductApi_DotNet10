@@ -1,4 +1,4 @@
-// Azure SQL with Entra authentication only and the free offer (ADR-0013, ADR-0018).
+// Azure SQL with Entra authentication only and the free offer (ADR-0006, ADR-0012).
 // The Entra administrator is the identity that deploys the environment: the deploy workflow signs in with it
 // to create the database users of the API and the migrator (infra/sql/database-users.sql).
 param serverName string

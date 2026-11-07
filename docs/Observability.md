@@ -61,7 +61,7 @@ Where to set them:
 - deployed environments: environment variables of the host/container. Avoid `appsettings.json`, otherwise every environment exports to the same endpoint.
 
 ### Azure: Application Insights
-On Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro ([ADR-0020](adr/0020-application-insights-with-azure-monitor-distro.md)), instead of OTLP:
+On Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro ([ADR-0013](adr/0013-application-insights.md)), instead of OTLP:
 
 | Key | Set by | Effect |
 |---|---|---|

@@ -9,7 +9,7 @@
 - **Immutable tags.** Images are tagged with the commit SHA. `latest` is never used for a deployment.
 - **The same checks locally and in CI,** so that what passes on my machine passes in the pipeline.
 - **Least privilege, no stored secrets.** The pipeline authenticates to the cloud with short-lived federated credentials.
-- **Migrations are forward-only once merged** ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)).
+- **Migrations are forward-only once merged** ([ADR-0009](adr/0009-migrations-forward-only-after-merge.md)).
 
 ## 1. Feedback before pushing
  
@@ -44,14 +44,14 @@ Every pull request to `main` goes through these gates. **Blocking** gates stop t
 | Unit tests | `Domain.Tests`, `Application.Tests` | `build-and-test` | Yes |
 | Integration tests | `Infrastructure.Tests` on SQL Server via Testcontainers (Docker on the runner) | `build-and-test` | Yes |
 | Vulnerable packages, transitive included | NuGet audit during `dotnet restore` (NU1901-NU1904, any severity from low); the warnings are replayed by `dotnet build -warnaserror`, which fails. If the vulnerability source is unreachable, NU1900 fails the build too | `build-and-test` | Yes |
-| Shared migrations untouched, no forgotten migration | `git diff` on `src/Infrastructure/Migrations/`, `dotnet ef migrations has-pending-model-changes` ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)) | `build-and-test` | Yes |
+| Shared migrations untouched, no forgotten migration | `git diff` on `src/Infrastructure/Migrations/`, `dotnet ef migrations has-pending-model-changes` ([ADR-0009](adr/0009-migrations-forward-only-after-merge.md)) | `build-and-test` | Yes |
 | Images build | `docker build` of the API and migrator targets, not pushed | `images` | Yes |
 | Image vulnerabilities | Trivy on both images: **critical** vulnerabilities **with a fix** (`ignore-unfixed`); "high" on base images would be mostly noise | `images` | Yes |
 | New dependencies | Dependency Review: a pull request that adds a dependency with a **high or critical** vulnerability | `dependency-review` | Yes |
 | Bicep | `az bicep lint` (rules in `infra/bicepconfig.json`) and `az bicep build` | `bicep` | Yes |
 | Code security (SAST) | CodeQL, GitHub default setup, on C# and the GitHub Actions workflows; the ruleset rule blocks **high or critical** security alerts and CodeQL errors | GitHub (not in `ci.yml`) | Yes |
 | Secrets | Secret scanning with **push protection**: a push containing a known secret format is rejected | GitHub repository setting | Yes, at push time |
-| Infrastructure best practices | PSRule for Azure (Well-Architected rules) on the Bicep, configured in `ps-rule.yaml`; some findings are accepted trade-offs ([ADR-0015](adr/0015-azure-infrastructure.md)) | `psrule` | No |
+| Infrastructure best practices | PSRule for Azure (Well-Architected rules) on the Bicep, configured in `ps-rule.yaml`; some findings are accepted trade-offs ([ADR-0011](adr/0011-azure-infrastructure.md)) | `psrule` | No |
 | Dependency updates | Dependabot version updates: weekly pull requests for NuGet, GitHub Actions, Dockerfile and Docker Compose, vulnerable or not (`.github/dependabot.yml`) | GitHub | No |
 | Vulnerable dependencies fixes | Dependabot alerts and security updates: a pull request as soon as a vulnerability affects a dependency, without waiting for the weekly run (repository setting) | GitHub | No |
 
@@ -85,25 +85,25 @@ flowchart LR
 - **GitHub Environments** (`staging`, `production`) with required reviewers for production.
 - **OIDC federated credentials** instead of stored secrets: Microsoft recommends OpenID Connect for GitHub Actions because no persistent credential can leak. One identity **per environment**, with minimal RBAC, so a staging run can never touch production.
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
-- **Secrets:** Azure SQL has no password: the API and the migrator sign in with their own user-assigned identity, and the deploy workflow creates their database users with `azure/sql-action` ([ADR-0018](adr/0018-sql-entra-authentication-and-identity-per-workload.md)). The MongoDB password is a GitHub secret passed to Bicep, which writes the connection string into the Key Vault of the environment, read by both identities ([ADR-0015](adr/0015-azure-infrastructure.md)).
+- **Secrets:** Azure SQL has no password: the API and the migrator sign in with their own user-assigned identity, and the deploy workflow creates their database users with `azure/sql-action` ([ADR-0012](adr/0012-identities-and-secrets.md)). The MongoDB password is a GitHub secret passed to Bicep, which writes the connection string into the Key Vault of the environment, read by both identities ([ADR-0012](adr/0012-identities-and-secrets.md)).
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
-- **Telemetry:** on Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro; the Container Apps environment sends console and system logs to the same Log Analytics workspace ([ADR-0020](adr/0020-application-insights-with-azure-monitor-distro.md)). The Aspire dashboard used in `docker-compose.yml` is a development tool only.
+- **Telemetry:** on Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro; the Container Apps environment sends console and system logs to the same Log Analytics workspace ([ADR-0013](adr/0013-application-insights.md)). The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
 ## 5. Infrastructure
  
 - **Local:** Docker Compose (`docker compose up -d` for the infrastructure, `--profile app` for everything). Compose is not used in production.
-- **Target:** Azure Container Apps (consumption), with **managed** Azure SQL (serverless) and Azure DocumentDB (MongoDB compatible) instead of containers ([ADR-0015](adr/0015-azure-infrastructure.md)).
-- **Infrastructure as code:** Bicep in `infra/`, deployed as one **deployment stack** per environment with the same settings everywhere ([ADR-0015](adr/0015-azure-infrastructure.md)):
+- **Target:** Azure Container Apps (consumption), with **managed** Azure SQL (serverless) and Azure DocumentDB (MongoDB compatible) instead of containers ([ADR-0011](adr/0011-azure-infrastructure.md)).
+- **Infrastructure as code:** Bicep in `infra/`, deployed as one **deployment stack** per environment with the same settings everywhere ([ADR-0011](adr/0011-azure-infrastructure.md)):
   - `infra/main.bicep` at subscription scope creates the resource group and calls the modules in `infra/modules/`; `infra/<environment>.bicepparam` holds what differs between environments.
   - Deploy: `az stack sub create --action-on-unmanage detachAll --deny-settings-mode denyDelete`. A deployment never deletes resources, and resources of the stack cannot be deleted by hand.
   - Teardown: `az stack sub delete --action-on-unmanage deleteAll`, a separate manual operation and the only one that deletes resources.
-  - A third stack, `productapi-shared`, owns the free DocumentDB cluster used by both environments, one database each. The pipeline deploys it on every run before the environments (idempotent); only "tear down everything" deletes it ([ADR-0015](adr/0015-azure-infrastructure.md)). Everything runs in France Central ([ADR-0019](adr/0019-france-central-region.md)).
+  - A third stack, `productapi-shared`, owns the free DocumentDB cluster used by both environments, one database each. The pipeline deploys it on every run before the environments (idempotent); only "tear down everything" deletes it ([ADR-0011](adr/0011-azure-infrastructure.md)). Everything runs in France Central ([ADR-0011](adr/0011-azure-infrastructure.md)).
   - The pull request builds and lints the `.bicep` files (`infra/bicepconfig.json`) and checks them with PSRule; it does not preview the changes (see Not covered). The `.bicepparam` files read pipeline values with `readEnvironmentVariable` and compile only inside a GitHub environment that provides them.
 
 ## 6. Database migrations
  
 - The **migrator** image (an EF Core migrations bundle) runs **before** the new application version and exits. The API never applies migrations on startup.
-- Forward-only once on `main`: a mistake is fixed with a new migration. No expand/contract: a breaking change goes out in one release with a short downtime ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)).
+- Forward-only once on `main`: a mistake is fixed with a new migration. No expand/contract: a breaking change goes out in one release with a short downtime ([ADR-0009](adr/0009-migrations-forward-only-after-merge.md)).
 - MongoDB indexes are created by the application at startup, idempotently; there is no init script.
 - Production deployments should treat a failing migrator as a stop: the application is not updated.
 

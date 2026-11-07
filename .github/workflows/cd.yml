@@ -53,7 +53,7 @@ jobs:
           docker push "${{ steps.names.outputs.api }}"
           docker push "${{ steps.names.outputs.migrator }}"
 
-  # The free MongoDB cluster shared by the environments (ADR-0015): idempotent, recreated after a full teardown
+  # The free MongoDB cluster shared by the environments (ADR-0011): idempotent, recreated after a full teardown
   shared:
     if: vars.CD_ENABLED == 'true' && !inputs.images-only
     runs-on: ubuntu-latest

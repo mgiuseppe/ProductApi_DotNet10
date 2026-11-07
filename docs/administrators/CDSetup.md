@@ -1,6 +1,6 @@
 # CD setup
 
-For a repository and Azure subscription admin: the setup done once before the first deployment (the CD workflow logs in to Azure with an identity, and that identity cannot create itself), the first deployment, and how to turn CD off and tear it down. Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](../CICD.md) and [ADR-0015](../adr/0015-azure-infrastructure.md).
+For a repository and Azure subscription admin: the setup done once before the first deployment (the CD workflow logs in to Azure with an identity, and that identity cannot create itself), the first deployment, and how to turn CD off and tear it down. Everything else is in the workflows (`.github/workflows/`) and in Bicep (`infra/`); the decisions behind them are in [CICD](../CICD.md) and [ADR-0011](../adr/0011-azure-infrastructure.md).
 
 ## 1. Run the setup script
 
@@ -9,7 +9,7 @@ For a repository and Azure subscription admin: the setup done once before the fi
 1. the Azure resource providers the templates use;
 2. one Entra identity per environment (`github-productapi-staging`, `github-productapi-production`), trusted by GitHub through OIDC with no secret, with its roles;
 3. the GitHub environments `staging` and `production` (production waits for your approval) and their `AZURE_*` variables;
-4. the secret `MONGO_ADMIN_PASSWORD`, typed at a hidden prompt. Azure SQL has no password: the deployment identity is its Entra administrator ([ADR-0018](../adr/0018-sql-entra-authentication-and-identity-per-workload.md)).
+4. the secret `MONGO_ADMIN_PASSWORD`, typed at a hidden prompt. Azure SQL has no password: the deployment identity is its Entra administrator ([ADR-0012](../adr/0012-identities-and-secrets.md)).
 
 Each step checks first whether its result already exists: re-running the script after a failure is safe.
 

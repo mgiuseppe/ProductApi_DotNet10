@@ -1,4 +1,4 @@
-# The only operation that deletes Azure resources (ADR-0015). Manual, with a typed confirmation.
+# The only operation that deletes Azure resources (ADR-0011). Manual, with a typed confirmation.
 # An environment teardown leaves the shared MongoDB cluster alone; "everything" deletes it last.
 name: Teardown
 
