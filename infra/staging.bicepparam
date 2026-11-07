@@ -11,3 +11,4 @@ param migratorImage = readEnvironmentVariable('MIGRATOR_IMAGE')
 
 // From GitHub secrets (ADR-0012): never written in this file
 param mongoAdminPassword = readEnvironmentVariable('MONGO_ADMIN_PASSWORD')
+param alertEmail = readEnvironmentVariable('ALERT_EMAIL')

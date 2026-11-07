@@ -9,9 +9,9 @@ For a repository and Azure subscription admin: the setup done once before the fi
 1. the Azure resource providers the templates use;
 2. one Entra identity per environment (`github-productapi-staging`, `github-productapi-production`), trusted by GitHub through OIDC with no secret, with its roles;
 3. the GitHub environments `staging` and `production` (production waits for your approval) and their `AZURE_*` variables;
-4. the secret `MONGO_ADMIN_PASSWORD`, typed at a hidden prompt. Azure SQL has no password: the deployment identity is its Entra administrator ([ADR-0012](../adr/0012-identities-and-secrets.md)).
+4. the secrets `MONGO_ADMIN_PASSWORD` and `ALERT_EMAIL` (who receives the [alerts](../Observability.md#alerts)), typed at a hidden prompt. Azure SQL has no password: the deployment identity is its Entra administrator ([ADR-0012](../adr/0012-identities-and-secrets.md)).
 
-Each step checks first whether its result already exists: re-running the script after a failure is safe.
+Each step checks first whether its result already exists: re-running the script after a failure is safe. Re-run it also when a new secret is added (for example `ALERT_EMAIL`): until it is set, the deployment fails.
 
 Requirements: bash 4 or later (on Windows, Git Bash), the GitHub CLI and the Azure CLI, both logged in.
 

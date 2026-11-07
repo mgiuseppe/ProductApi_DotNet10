@@ -85,7 +85,7 @@ flowchart LR
 - **GitHub Environments** (`staging`, `production`) with required reviewers for production.
 - **OIDC federated credentials** instead of stored secrets: Microsoft recommends OpenID Connect for GitHub Actions because no persistent credential can leak. One identity **per environment**, with minimal RBAC, so a staging run can never touch production.
   References: [Bicep CI/CD Handbook](https://azure.github.io/bicep-cicd-handbook/setup/oidc), [Deploy to Azure with GitHub Actions](https://learn.microsoft.com/devops/deliver/iac-github-actions).
-- **Secrets:** Azure SQL has no password: the API and the migrator sign in with their own user-assigned identity, and the deploy workflow creates their database users with `azure/sql-action` ([ADR-0012](adr/0012-identities-and-secrets.md)). The MongoDB password is a GitHub secret passed to Bicep, which writes the connection string into the Key Vault of the environment, read by both identities ([ADR-0012](adr/0012-identities-and-secrets.md)).
+- **Secrets:** Azure SQL has no password: the API and the migrator sign in with their own user-assigned identity, and the deploy workflow creates their database users with `azure/sql-action` ([ADR-0012](adr/0012-identities-and-secrets.md)). The MongoDB password is a GitHub secret passed to Bicep, which writes the connection string into the Key Vault of the environment, read by both identities ([ADR-0012](adr/0012-identities-and-secrets.md)). `ALERT_EMAIL` is a secret too, not because it is a credential, but so that it is masked in the workflow logs, public in a public repository.
 - **Configuration:** `appsettings.json` holds non-secret defaults; environment variables override them (`ConnectionStrings__DbConnection`, ...). Secrets come from a secret store (for example Key Vault) through managed identities, never from files in the repository.
 - **Telemetry:** on Azure the API exports to the Application Insights of its environment with the Azure Monitor OpenTelemetry distro; the Container Apps environment sends console and system logs to the same Log Analytics workspace ([ADR-0013](adr/0013-application-insights.md)). The Aspire dashboard used in `docker-compose.yml` is a development tool only.
 
@@ -112,6 +112,7 @@ flowchart LR
 - `/alive` is the liveness check (the process is up) and `/health` the full one (database included). The platform probes use them.
 - The health endpoints answer only on a dedicated port (8081), in every environment: the probes target that port, the public ingress exposes only 8080 ([Observability](Observability.md#health-checks)). The probe interval matters: while a replica runs, every readiness probe queries the serverless SQL database and keeps it awake.
 - Rollout: each deployment creates a new Container Apps revision (single revision mode), which receives the traffic once its probes pass. Rollback redeploys the previous image tag.
+- The probes act on their own (restart, no traffic) but notify nobody: an email alert covers what they cannot fix ([Observability](Observability.md#alerts)).
 
 ## Not covered
  
@@ -119,4 +120,4 @@ flowchart LR
 - Logs and traces in Azure: the Container Apps environment has no log destination yet.
 - Cloud costs, backups and retention of the managed databases.
 - SBOM (an inventory of the components in the image) and image signing (to verify that an image comes from the pipeline and was not altered).
-- Trace sampling and alerting.
+- Trace sampling.

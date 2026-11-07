@@ -30,6 +30,10 @@ param mongoAdminUser string
 @secure()
 param mongoAdminPassword string
 
+@description('Recipient of the alert emails, from a GitHub secret: not in the public repository.')
+@minLength(1)
+param alertEmail string
+
 var appName = 'productapi'
 var tags = {
   app: appName
@@ -147,6 +151,18 @@ module api 'modules/container-app.bicep' = {
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     sqlConnectionString: '${sqlConnectionStringBase};User Id=${apiIdentity.outputs.clientId}'
     mongoSecretUri: keyVault.outputs.mongoSecretUri
+  }
+}
+
+// Email when the API keeps restarting or returns 5xx: what the probes cannot fix by themselves
+module alerts 'modules/alerts.bicep' = {
+  scope: resourceGroup
+  params: {
+    appName: appName
+    environmentName: environmentName
+    tags: tags
+    containerAppId: api.outputs.id
+    alertEmail: alertEmail
   }
 }
 

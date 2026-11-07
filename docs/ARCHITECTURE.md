@@ -90,7 +90,7 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 
 ## Observability
 
-OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development) and to Application Insights with the Azure Monitor distro on Azure ([ADR-0013](adr/0013-application-insights.md)). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), mapped only in Development ([Observability](Observability.md)).
+OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development) and to Application Insights with the Azure Monitor distro on Azure ([ADR-0013](adr/0013-application-insights.md)). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), served only on a dedicated port ([Observability](Observability.md#health-checks)). On Azure, email alerts on restarts and 5xx responses ([Observability](Observability.md#alerts)).
 
 ## Testing
 

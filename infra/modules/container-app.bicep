@@ -81,5 +81,6 @@ resource app 'Microsoft.App/containerApps@2026-07-01' = {
   }
 }
 
+output id string = app.id
 output name string = app.name
 output fqdn string = app.properties.configuration.ingress.fqdn
