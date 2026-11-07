@@ -22,9 +22,10 @@ The app runs on Azure in `staging` and `production`. Environments are created to
 - Nothing is deleted by mistake; deleting on purpose means tearing down the environment.
 - No isolation between environments on MongoDB, and no MongoDB backups.
 - Public network access with the "Allow Azure services" firewall rule, because consumption Container Apps have no fixed outbound IP: any Azure-hosted client can reach SQL and MongoDB, protected by Entra authentication and the MongoDB password.
+- Slow at the edges: the first request after scaling to zero waits for a cold start, and creating or deleting the Container Apps environment takes several minutes, so a first deployment or a teardown is slow.
 
 ## Alternatives considered
 - **Classic deployments and `az group delete`**: no protection against manual deletion.
 - **One paid MongoDB cluster per environment**: isolation, at a monthly cost.
 - **Terraform**: needs a state backend; Bicep is native to Azure.
-- **App Service**: simpler for a single API, but it does not scale to zero.
+- **App Service**: simpler for a single API and faster to create and delete, but it does not scale to zero.
