@@ -11,7 +11,7 @@
 
 Why: the project has one maintainer and direct pushes would be enough, but it is meant to work like a real application, where changes reach `main` only through pull requests. Git Flow (`develop`, release branches) was not chosen: it is built for versioned releases, not for an app deployed from `main`.
 
-A migration becomes shared when it is merged into `main` ([ADR-0010](docs/adr/0010-migrations-editable-until-pushed.md)).
+A migration becomes shared when it is merged into `main` ([ADR-0009](docs/adr/0009-migrations-forward-only-after-merge.md)).
 
 ## Squash merge only
 

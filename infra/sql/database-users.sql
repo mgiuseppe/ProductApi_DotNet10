@@ -1,4 +1,4 @@
--- Database users of the API and the migrator, one per managed identity, each with only the rights it needs (ADR-0018).
+-- Database users of the API and the migrator, one per managed identity, each with only the rights it needs (ADR-0012).
 -- Run by the deploy workflow (azure/sql-action) as the server's Entra administrator, after Bicep and before the migrator.
 -- Idempotent: an existing user is left alone, adding a role a user already has changes nothing.
 --

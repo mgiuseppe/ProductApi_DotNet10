@@ -14,7 +14,7 @@
 #   2. Azure identities: setup one Entra app registration and service principal per environment
 #                        that will be used by GitHub to deploy the Bicep templates through OIDC (no secret).
 #   3. GitHub environments: staging and production (production waits for your approval), with their variables
-#   4. GitHub secret: the MongoDB admin password, typed at a prompt (Azure SQL has no password, ADR-0018)
+#   4. GitHub secret: the MongoDB admin password, typed at a prompt (Azure SQL has no password, ADR-0012)
 #
 # Idempotent: every step first checks whether its result already exists, so running the script again
 # creates what is missing and changes nothing else. Safe to re-run after a failure halfway.
@@ -97,7 +97,7 @@ done
 # ---------------------------------------------------------------------------------------------------------
 
 # The Bicep template grants the workload identities "Key Vault Secrets User" (read the MongoDB secret) and
-# "Monitoring Metrics Publisher" (send telemetry to Application Insights, ADR-0020), so the deployment identity
+# "Monitoring Metrics Publisher" (send telemetry to Application Insights, ADR-0013), so the deployment identity
 # must be allowed to create role assignments. "Role Based Access Control Administrator" allows that, but on its
 # own it could also grant itself Owner. This ABAC condition narrows it down: it may write or delete role
 # assignments only for these two roles (role definition ids, the same in every tenant). Read it as:
@@ -238,7 +238,7 @@ done
 
 step "4. MongoDB admin password"
 
-# Repository secret, shared by both environments (one MongoDB cluster, ADR-0015). Never passed on the command
+# Repository secret, shared by both environments (one MongoDB cluster, ADR-0012). Never passed on the command
 # line (it would end up in the shell history and in the process list): without --body, gh asks for the value
 # with a hidden prompt. An existing secret is left alone, because GitHub never shows a secret's value back
 # and a re-run would otherwise force you to type it again.

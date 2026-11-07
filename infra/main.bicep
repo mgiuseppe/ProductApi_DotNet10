@@ -1,4 +1,4 @@
-// One environment (staging or production), deployed as a deployment stack (ADR-0015) after shared.bicep:
+// One environment (staging or production), deployed as a deployment stack (ADR-0011) after shared.bicep:
 //   az stack sub create --name productapi-<env> --location francecentral \
 //     --template-file infra/main.bicep --parameters infra/<env>.bicepparam \
 //     --action-on-unmanage detachAll --deny-settings-mode denyDelete
@@ -10,10 +10,10 @@ targetScope = 'subscription'
 @allowed(['staging', 'production'])
 param environmentName string
 
-@description('Azure region for every resource (ADR-0019: France Central, Azure SQL and free DocumentDB tier).')
+@description('Azure region for every resource (ADR-0011: France Central, Azure SQL and free DocumentDB tier).')
 param location string = 'francecentral'
 
-@description('Client id of the deployment identity of the environment, the Entra administrator of the SQL server (ADR-0018).')
+@description('Client id of the deployment identity of the environment, the Entra administrator of the SQL server (ADR-0012).')
 param sqlAdminClientId string
 
 @description('API image (ghcr.io/...:<tag>). The pipeline passes the image currently running, so a deployment never ships new code before the migrator has run.')
@@ -26,7 +26,7 @@ param migratorImage string
 @minLength(1)
 param mongoAdminUser string
 
-@description('Administrator password of the shared MongoDB cluster, from a GitHub secret (ADR-0015).')
+@description('Administrator password of the shared MongoDB cluster, from a GitHub secret (ADR-0012).')
 @secure()
 param mongoAdminPassword string
 
@@ -64,7 +64,7 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
   }
 }
 
-// Telemetry of the API and logs of the environment (ADR-0020)
+// Telemetry of the API and logs of the environment (ADR-0013)
 module monitoring 'modules/monitoring.bicep' = {
   scope: resourceGroup
   params: {
@@ -76,7 +76,7 @@ module monitoring 'modules/monitoring.bicep' = {
   }
 }
 
-// Entra administrator: the deployment identity of the environment (ADR-0018)
+// Entra administrator: the deployment identity of the environment (ADR-0012)
 module sql 'modules/sql.bicep' = {
   scope: resourceGroup
   params: {
@@ -100,7 +100,7 @@ var mongoConnectionString = replace(
   '/${appName}-${environmentName}?'
 )
 
-// One identity per workload, so each gets only its own database rights (ADR-0018)
+// One identity per workload, so each gets only its own database rights (ADR-0012)
 module apiIdentity 'modules/identity.bicep' = {
   scope: resourceGroup
   params: {
@@ -119,7 +119,7 @@ module migratorIdentity 'modules/identity.bicep' = {
   }
 }
 
-// No secret: the identity named by User Id signs in (ADR-0018)
+// No secret: the identity named by User Id signs in (ADR-0012)
 var sqlConnectionStringBase = 'Server=tcp:${sql.outputs.serverFqdn},1433;Database=${sql.outputs.databaseName};Authentication=Active Directory Managed Identity;Encrypt=True;TrustServerCertificate=False'
 
 module keyVault 'modules/key-vault.bicep' = {

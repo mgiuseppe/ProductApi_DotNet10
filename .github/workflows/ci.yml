@@ -48,7 +48,7 @@ jobs:
       - name: Integration tests (SQL Server via Testcontainers, Docker is available on the runner)
         run: dotnet test tests/Infrastructure.Tests -c Release --no-build
 
-      - name: Shared migrations untouched (ADR-0010)
+      - name: Shared migrations untouched (ADR-0009)
         if: github.event_name == 'pull_request'
         run: |
           changed=$(git diff --name-status origin/main...HEAD -- src/Infrastructure/Migrations/ \
@@ -116,7 +116,7 @@ jobs:
           fail-on-severity: high
 
   # Well-Architected rules on the Bicep templates: informational only, findings never block a merge.
-  # Some are accepted trade-offs (public network access, no MongoDB backups, ADR-0015).
+  # Some are accepted trade-offs (public network access, no MongoDB backups, ADR-0011).
   psrule:
     runs-on: ubuntu-latest
     continue-on-error: true

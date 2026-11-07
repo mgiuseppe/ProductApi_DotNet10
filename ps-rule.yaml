@@ -21,7 +21,7 @@ execution:
   unprocessedObject: Ignore
 
 rule:
-  # Accepted trade-offs (ADR-0015: free tier, ephemeral environments, public API). Excluded so that the job
+  # Accepted trade-offs (ADR-0011: free tier, ephemeral environments, public API). Excluded so that the job
   # is green and a new finding stands out. Remove a line when the trade-off changes.
   exclude:
     # Cost: zone redundancy and two replicas need a paid, always-on environment; min replicas 0 and the free
@@ -31,12 +31,12 @@ rule:
     - Azure.Cosmos.MongoAvailabilityZone
     - Azure.Cosmos.MongoEntraID
     # Cost: Defender for SQL and vulnerability assessment are paid; SQL auditing and Key Vault logs are not sent to
-    # the workspace, to stay under its daily cap (ADR-0020)
+    # the workspace, to stay under its daily cap (ADR-0013)
     - Azure.SQL.DefenderCloud
     - Azure.SQL.VAScan
     - Azure.SQL.Auditing
     - Azure.KeyVault.Logs
-    # Cost: replicating the Log Analytics workspace to a second region is billed per GB (ADR-0020)
+    # Cost: replicating the Log Analytics workspace to a second region is billed per GB (ADR-0013)
     - Azure.Log.Replication
     # Public by design: the API is public, consumption Container Apps have no fixed outbound IP (no VNet)
     - Azure.ContainerApp.PublicAccess

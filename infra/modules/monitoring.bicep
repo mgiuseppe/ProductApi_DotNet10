@@ -1,4 +1,4 @@
-// Log Analytics workspace and workspace-based Application Insights of one environment (ADR-0020).
+// Log Analytics workspace and workspace-based Application Insights of one environment (ADR-0013).
 // The API sends its OpenTelemetry data with Entra authentication: local authentication is off, so the connection
 // string is not a secret, and the publishers get Monitoring Metrics Publisher here.
 param workspaceName string

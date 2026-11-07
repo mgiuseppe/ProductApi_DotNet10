@@ -1,22 +1,22 @@
 # 0005. Domain events dispatched before the commit
 
 - Status: Accepted
-- Date: 2026-10-14
+- Date: 2026-11-07
 
 ## Context
-Confirming or canceling an order must write an entry to the order history. The aggregate should only state that something happened, not know who reacts.
+When an aggregate changes, other parts of the system may need to react. The aggregate should say what happened, not know who reacts. Example: confirming or canceling an order writes an entry in the order history, on MongoDB.
 
 ## Decision
-Aggregate roots collect domain events (`BaseAggregateRoot.AddDomainEvent`). `DispatchDomainEventsInterceptor`, an EF `SaveChanges` interceptor, reads and clears them and publishes them through MediatR **before** the commit. Domain events implement `INotification`, so Domain references `MediatR.Contracts`. Events carry a snapshot, not the entity. Metrics are recorded in the command handler after the save succeeds.
+- Aggregate roots collect domain events; an EF `SaveChanges` interceptor publishes them through MediatR **before** the commit.
+- Events implement `INotification`, so Domain references `MediatR.Contracts`.
+- Events carry a snapshot, not the entity. Event handlers never call `SaveChanges`.
 
 ## Consequences
-- A failing handler makes the save fail: the history is not lost silently.
-- The MongoDB write is not in the EF transaction: if the commit fails, the history entry stays as an orphan. Accepted for a learning scope.
-- Handlers run inside the request and add latency; handlers must not call `SaveChanges`.
-- Events raised by handlers are not published in the same pass.
-- The trade-offs per event (orphan acceptable? loss acceptable?) are discussed in [DomainEventsHandling](../DomainEventsHandling.md).
+- If an event handler throws, `SaveChanges` stops before the commit: nothing is written, so a confirmed order never misses its history entry.
+- The MongoDB write is outside the SQL transaction: if the commit fails, the history entry stays as an orphan. Accepted.
+- Handlers run inside the request and add latency.
 
 ## Alternatives considered
-- **Dispatch after the commit**: no orphans, but effects can be lost, and "after" is unreliable with outer transactions.
-- **Transactional outbox**: no orphans and no loss (at-least-once with idempotent handlers), but needs a table, a background worker, retries, a dead-letter table and cleanup. Out of scope; the choice for production.
-- **History in the relational database in the same transaction**: the simplest correct option in production; MongoDB was kept to practise a second store ([0006](0006-postgresql-and-mongodb.md)).
+Which option fits depends on whether an orphan or a lost effect is acceptable: see the table in [DomainEventsHandling](../DomainEventsHandling.md#criticality-four-levels).
+- **Dispatch after the commit**: no orphans, but effects can be lost.
+- **Transactional outbox**: no orphans and no loss, but needs a table, a worker and retries. The choice for production.

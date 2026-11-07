@@ -49,7 +49,7 @@ jobs:
             --query "properties.template.containers[0].image" -o tsv 2>/dev/null || true)
           echo "API_IMAGE=${current:-$NEW_API_IMAGE}" >> "$GITHUB_ENV"
 
-      - name: Infrastructure (deployment stack, never deletes, ADR-0015)
+      - name: Infrastructure (deployment stack, never deletes, ADR-0011)
         env:
           MIGRATOR_IMAGE: ${{ inputs.migrator-image }}
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
@@ -65,7 +65,7 @@ jobs:
           deploy || { echo "Retrying in 60 s"; sleep 60; deploy; }
 
       # Database users are not Azure resources: created with T-SQL, signed in with the OIDC login above, which is
-      # the server's Entra administrator (ADR-0018). Values from the stack outputs; the script is idempotent.
+      # the server's Entra administrator (ADR-0012). Values from the stack outputs; the script is idempotent.
       - name: Database users values
         run: |
           outputs=$(az stack sub show --name "$STACK" --query outputs -o json)

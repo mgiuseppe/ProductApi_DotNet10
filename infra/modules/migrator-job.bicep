@@ -1,4 +1,4 @@
-// The migrator (EF Core migrations bundle, ADR-0009) as a manually triggered job: the pipeline starts it before
+// The migrator (EF Core migrations bundle, ADR-0008) as a manually triggered job: the pipeline starts it before
 // updating the API and stops if it fails.
 param name string
 param location string
@@ -6,7 +6,7 @@ param tags object
 param environmentId string
 param identityId string
 param image string
-@description('Azure SQL connection string, without secret: the identity signs in (ADR-0018).')
+@description('Azure SQL connection string, without secret: the identity signs in (ADR-0012).')
 param sqlConnectionString string
 param mongoSecretUri string
 

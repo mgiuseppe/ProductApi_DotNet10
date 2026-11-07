@@ -80,9 +80,9 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 
 ## Persistence
 
-- **SQL Server** (EF Core, Azure SQL in the cloud, snake_case names) is the source of truth for the three aggregates ([ADR-0013](adr/0013-sql-server-for-aggregates.md), [EFCore](EFCore.md)).
+- **SQL Server** (EF Core, Azure SQL in the cloud, snake_case names) is the source of truth for the three aggregates ([ADR-0006](adr/0006-sql-server-and-mongodb.md), [EFCore](EFCore.md)).
 - **MongoDB** stores the order history entries (polymorphic documents), written by domain event handlers. It is not in the EF transaction: a rolled-back save can leave orphan history entries, accepted for a learning scope.
-- **Migrations** are applied by a separate `migrator` container (EF migrations bundle) before the API starts, never at API startup ([ADR-0009](adr/0009-migrations-with-migrator-container.md)). Mongo indexes are created idempotently at startup.
+- **Migrations** are applied by a separate `migrator` container (EF migrations bundle) before the API starts, never at API startup ([ADR-0008](adr/0008-migrations-with-migrator.md)). Mongo indexes are created idempotently at startup.
 
 ## AI
 
@@ -90,7 +90,7 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 
 ## Observability
 
-OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development) and to Application Insights with the Azure Monitor distro on Azure ([ADR-0020](adr/0020-application-insights-with-azure-monitor-distro.md)). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), mapped only in Development ([Observability](Observability.md)).
+OpenTelemetry for traces, metrics and logs, exported over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (Aspire dashboard in development) and to Application Insights with the Azure Monitor distro on Azure ([ADR-0013](adr/0013-application-insights.md)). Custom meter `ProductApi.Orders`; GenAI spans and token metrics without prompt contents. Health checks: `/alive` (liveness) and `/health` (database and MongoDB), mapped only in Development ([Observability](Observability.md)).
 
 ## Testing
 
@@ -105,7 +105,7 @@ See [TestingStrategy](TestingStrategy.md).
 ## Runtime and delivery
 
 - Local: `docker compose up -d` for the infrastructure, `--profile app` to also run the containerized API.
-- CI/CD with GitHub Actions: pull request checks in `ci.yml`, deployment to Azure Container Apps in `cd.yml` and `deploy.yml` ([CICD](CICD.md)). Azure infrastructure is Bicep in `infra/`, deployed as deployment stacks ([ADR-0015](adr/0015-azure-infrastructure.md)). Staging has been deployed and verified end to end; production has never been deployed (see [CICD](CICD.md#3-deployment-pipeline-cd)).
+- CI/CD with GitHub Actions: pull request checks in `ci.yml`, deployment to Azure Container Apps in `cd.yml` and `deploy.yml` ([CICD](CICD.md)). Azure infrastructure is Bicep in `infra/`, deployed as deployment stacks ([ADR-0011](adr/0011-azure-infrastructure.md)). Staging has been deployed and verified end to end; production has never been deployed (see [CICD](CICD.md#3-deployment-pipeline-cd)).
 
 ## Known limits
 
@@ -116,20 +116,4 @@ See [TestingStrategy](TestingStrategy.md).
 
 ## Decision records
 
-| ADR | Decision |
-|---|---|
-| [0001](adr/0001-clean-architecture.md) | Clean Architecture with four projects |
-| [0002](adr/0002-rich-domain-model.md) | Rich domain model with aggregates that enforce invariants |
-| [0003](adr/0003-cqrs-with-mediatr.md) | CQRS with MediatR, queries bypass repositories |
-| [0004](adr/0004-repositories-and-unit-of-work.md) | Collection-like repositories, `DbContext` as unit of work, explicit commit |
-| [0005](adr/0005-domain-events-before-commit.md) | Domain events dispatched before the commit by an EF interceptor, no outbox |
-| [0006](adr/0006-postgresql-and-mongodb.md) | PostgreSQL for aggregates, MongoDB for order history (superseded by 0013) |
-| [0007](adr/0007-ichatclient-without-own-port.md) | `IChatClient` used directly, no port of our own |
-| [0008](adr/0008-integration-tests-with-testcontainers.md) | Integration tests on real Postgres with Testcontainers (superseded by 0013) |
-| [0009](adr/0009-migrations-with-migrator-container.md) | Migrations applied by a dedicated migrator container |
-| [0010](adr/0010-migrations-editable-until-pushed.md) | Migrations editable until pushed, forward-only after |
-| [0013](adr/0013-sql-server-for-aggregates.md) | SQL Server (Azure SQL) for aggregates, MongoDB for order history |
-| [0015](adr/0015-azure-infrastructure.md) | Azure: Bicep deployment stacks that never delete on deploy, secrets in a Key Vault per environment, one free MongoDB cluster shared by the environments |
-| [0018](adr/0018-sql-entra-authentication-and-identity-per-workload.md) | Azure SQL with Entra authentication only: one identity per workload with least rights, database users created by the deploy workflow |
-| [0019](adr/0019-france-central-region.md) | France Central as the Azure region: the subscription cannot create Azure SQL servers in North Europe |
-| [0020](adr/0020-application-insights-with-azure-monitor-distro.md) | Application Insights per environment, the API exports with the Azure Monitor OpenTelemetry distro |
+The architectural decisions are in [docs/adr](adr/README.md), one file each.

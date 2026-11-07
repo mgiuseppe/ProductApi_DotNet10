@@ -1,6 +1,6 @@
 // Workload-profiles environment with only the Consumption profile: scales to zero, billed per use.
 // (The legacy consumption-only type would have to be recreated to add profiles later.)
-// Console and system logs of every app and job go to the Log Analytics workspace of the environment (ADR-0020),
+// Console and system logs of every app and job go to the Log Analytics workspace of the environment (ADR-0013),
 // through a diagnostic setting: no workspace shared key in the template.
 param name string
 param location string

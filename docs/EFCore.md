@@ -1,7 +1,7 @@
 # EF Core
 
 - ORM used to map db tables to C# Entities.
-- Migrations are editable while local and forward-only once pushed (see [Migrations](#migrations) and [ADR-0010](adr/0010-migrations-editable-until-pushed.md)).
+- Migrations are editable while local and forward-only once pushed (see [Migrations](#migrations) and [ADR-0009](adr/0009-migrations-forward-only-after-merge.md)).
 - We will use IReadOnlyList and not IEnumerable to avoid a lazy query execution that would throw an ObjectDisposedException 
 - We will use Fluent API (classes implementing IEntityTypeConfiguration inside infrastructure) to map EF against the entities withouth writing EF-related code inside Domain.
 - a DBContext is not ThreadSafe and is designed to be used a single Unit Of Work (Scoped lifetime is the way, Also Repositories should be Scoped)
@@ -39,7 +39,7 @@ With GitHub Flow the boundary will move from the push to the merge on `main`, an
 
 ### Backward compatibility (high availability only)
 
-This project does **not** apply it ([ADR-0010](adr/0010-migrations-editable-until-pushed.md)): it has no high-availability requirement, so a breaking change goes out in one release with a short downtime (e.g. a single `RenameColumn`). The rest of this section describes what an app with zero-downtime deployments would need.
+This project does **not** apply it ([ADR-0009](adr/0009-migrations-forward-only-after-merge.md)): it has no high-availability requirement, so a breaking change goes out in one release with a short downtime (e.g. a single `RenameColumn`). The rest of this section describes what an app with zero-downtime deployments would need.
 
 During a rolling update, and after a rollback of the image, the **previous version of the app runs on the new schema**. Every migration must leave a schema that works for both the current and the previous version. Changes that break this are split into several releases with **expand/contract**: add the new shape, move the code, remove the old shape in a later release.
 
