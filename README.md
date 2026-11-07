@@ -5,23 +5,34 @@
 A product, order and voucher API, built to refresh .NET skills end to end:
 
 - **.NET 10**, Clean Architecture, DDD aggregates, CQRS with MediatR
-- **SQL Server** (EF Core) for the aggregates, **MongoDB** for the order history
-- **OpenTelemetry**, with Application Insights on Azure
-- one **LLM** feature through `IChatClient`: a summary of an order for support operators
-- **CI/CD** with GitHub Actions, **infrastructure as code** with Bicep on Azure Container Apps
-- developed with **Claude Code**: project rules in [CLAUDE.md](CLAUDE.md), review agents and a commit skill in [.claude/](.claude/)
+- **SQL Server** (EF Core) for the aggregates
+- **MongoDB** for the order history
+- **Observability** through OpenTelemetry, with Application Insights and email alerts on Azure
+- **LLM** feature through `IChatClient`: a summary of an order for support operators
+- **Azure** deployment: Container Apps, Azure SQL, Azure DocumentDB, Key Vault, Application Insights
+- **Infrastructure as code** with Bicep deployment stacks
+- **CI/CD** with GitHub Actions
+- **Claude Code** for development: project rules in [CLAUDE.md](CLAUDE.md), review agents and a commit skill in [.claude/](.claude/)
 
 ```mermaid
 flowchart LR
-    client([Client]) --> api[API<br/>Container App]
-    api --> sql[(Azure SQL<br/>orders, products, vouchers)]
-    api --> mongo[(MongoDB<br/>order history)]
+    client([Client]) --> api
+    subgraph azure [Azure]
+        api[API<br/>Container App]
+        migrator[Migrator<br/>Container Apps job]
+        sql[(Azure SQL<br/>orders, products, vouchers)]
+        mongo[(Azure DocumentDB<br/>order history)]
+        kv[Key Vault<br/>MongoDB connection string]
+        appi[Application Insights]
+    end
+    api --> sql
+    api --> mongo
+    api --> kv
+    api -.telemetry.-> appi
+    migrator --> sql
     api --> llm[OpenAI]
-    api -.telemetry.-> appi[Application Insights]
-    migrator[Migrator<br/>Container Apps job] --> sql
     gh[GitHub Actions] -->|images| ghcr[GHCR]
-    gh -->|Bicep, deploy| api
-    gh --> migrator
+    gh -->|Bicep, deploy| azure
 ```
 
 ## Project structure
