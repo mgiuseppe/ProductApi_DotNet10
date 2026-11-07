@@ -123,6 +123,7 @@ jobs:
     env:
       # The parameter files read pipeline values: placeholders are enough to expand the templates
       MONGO_ADMIN_PASSWORD: placeholder
+      ALERT_EMAIL: placeholder@example.com
       AZURE_CLIENT_ID: 00000000-0000-0000-0000-000000000000
       API_IMAGE: ghcr.io/placeholder/api:0
       MIGRATOR_IMAGE: ghcr.io/placeholder/migrator:0

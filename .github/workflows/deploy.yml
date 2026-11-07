@@ -54,6 +54,7 @@ jobs:
           MIGRATOR_IMAGE: ${{ inputs.migrator-image }}
           AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
           MONGO_ADMIN_PASSWORD: ${{ secrets.MONGO_ADMIN_PASSWORD }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
         # On a fresh environment the Key Vault role assignment may not have propagated when the app checks its
         # secret references: retry once (the stack is idempotent)
         run: |

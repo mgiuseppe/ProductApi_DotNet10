@@ -116,3 +116,19 @@ Why a dedicated port: the body says only `Healthy` or `Unhealthy`, so the endpoi
 The liveness check has no dependencies on purpose: a database outage must make the app not ready (no traffic), not restart it.
 
 Try them with `src/Api/TestsHttp/ApiHealthChecks.http`.
+
+## Alerts
+On Azure the probes act on their own: a failing liveness probe restarts the container, a failing readiness probe takes the replica out of traffic. They notify nobody, so a problem they cannot fix (a database down for hours, a crash at every start) would go unseen. `infra/modules/alerts.bicep` adds two metric alerts per environment on the API container app, which send an email to the `ALERT_EMAIL` GitHub secret:
+
+| Alert | Metric | Fires when |
+|---|---|---|
+| `restarts` (severity 1) | `RestartCount`, maximum | a replica restarted more than 3 times (liveness failures or crashes) |
+| `server-errors` (severity 2) | `Requests` with `statusCodeCategory` 5xx, total over 5 minutes | at least one 5xx response |
+
+- They read platform metrics, not `/health`: the health port is not reachable from outside.
+- They resolve by themselves when the metric goes back under the threshold.
+- `RestartCount` is cumulative per replica: once over 3 it stays there until the replica is replaced, so the alert does not repeat for that replica.
+- Scaled to zero, there is no data and no alert.
+- Not verified yet: if the first request after an idle period times out while the serverless database resumes, its 5xx sends an email. If that happens, raise the threshold.
+- Cost: one time series per alert, 4 in total, within the 10 free monitored time series per month; the first 1,000 emails per month are free.
+- Not covered: an availability test from outside, because it would keep the app and the serverless database awake.

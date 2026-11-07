@@ -14,7 +14,8 @@
 #   2. Azure identities: setup one Entra app registration and service principal per environment
 #                        that will be used by GitHub to deploy the Bicep templates through OIDC (no secret).
 #   3. GitHub environments: staging and production (production waits for your approval), with their variables
-#   4. GitHub secret: the MongoDB admin password, typed at a prompt (Azure SQL has no password, ADR-0012)
+#   4. GitHub secrets: the MongoDB admin password and the alert email, typed at a prompt (Azure SQL has no
+#      password, ADR-0012)
 #
 # Idempotent: every step first checks whether its result already exists, so running the script again
 # creates what is missing and changes nothing else. Safe to re-run after a failure halfway.
@@ -233,23 +234,27 @@ for env in "${ENVIRONMENTS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------------------------------------
-# 4. GitHub secret
+# 4. GitHub secrets
 # ---------------------------------------------------------------------------------------------------------
 
-step "4. MongoDB admin password"
+step "4. MongoDB admin password and alert email"
 
-# Repository secret, shared by both environments (one MongoDB cluster, ADR-0012). Never passed on the command
-# line (it would end up in the shell history and in the process list): without --body, gh asks for the value
-# with a hidden prompt. An existing secret is left alone, because GitHub never shows a secret's value back
-# and a re-run would otherwise force you to type it again.
-# No ; ' " characters: the password ends up inside the connection string.
-secret=MONGO_ADMIN_PASSWORD
-if gh secret list --repo "$REPO" --json name --jq '.[].name' | grep -qx "$secret"; then
-  info "$secret: already set (to change it: gh secret set $secret --repo $REPO)"
-else
-  info "$secret:"
-  gh secret set "$secret" --repo "$REPO"
-fi
+# Repository secrets, shared by both environments. Never passed on the command line (they would end up in the
+# shell history and in the process list): without --body, gh asks for the value with a hidden prompt. An
+# existing secret is left alone, because GitHub never shows a secret's value back and a re-run would otherwise
+# force you to type it again.
+# - MONGO_ADMIN_PASSWORD: one MongoDB cluster (ADR-0012). No ; ' " characters: it ends up inside the
+#   connection string.
+# - ALERT_EMAIL: recipient of the Azure Monitor alerts. A secret, not a variable, only so that it does not
+#   appear in the workflow logs, which are public in a public repository.
+for secret in MONGO_ADMIN_PASSWORD ALERT_EMAIL; do
+  if gh secret list --repo "$REPO" --json name --jq '.[].name' | grep -qx "$secret"; then
+    info "$secret: already set (to change it: gh secret set $secret --repo $REPO)"
+  else
+    info "$secret:"
+    gh secret set "$secret" --repo "$REPO"
+  fi
+done
 
 # ---------------------------------------------------------------------------------------------------------
 # Done
