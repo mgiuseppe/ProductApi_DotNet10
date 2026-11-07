@@ -132,12 +132,12 @@ module keyVault 'modules/key-vault.bicep' = {
     name: 'kv-${appName}-${take(suffix, 8)}' // max 24 characters, globally unique
     location: location
     tags: tags
-    readerPrincipalIds: [apiIdentity.outputs.principalId, migratorIdentity.outputs.principalId]
+    readerPrincipalIds: [apiIdentity.outputs.principalId] // the migrator never uses MongoDB
     mongoConnectionString: mongoConnectionString
   }
 }
 
-// App and job depend on the vault module outputs, so they are created after their identities can read the secret
+// The app depends on the vault module outputs, so it is created after its identity can read the secret
 module api 'modules/container-app.bicep' = {
   scope: resourceGroup
   params: {
@@ -176,7 +176,6 @@ module migrator 'modules/migrator-job.bicep' = {
     identityId: migratorIdentity.outputs.id
     image: migratorImage
     sqlConnectionString: '${sqlConnectionStringBase};User Id=${migratorIdentity.outputs.clientId}'
-    mongoSecretUri: keyVault.outputs.mongoSecretUri
   }
 }
 

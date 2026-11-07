@@ -11,7 +11,7 @@ The API must not be able to change the schema, and passwords should not exist wh
 - **Entra-only Azure SQL**: no SQL password; the deployment identity is the server's Entra administrator.
 - **One user-assigned identity per workload**: the migrator gets schema rights, the API only read and write.
 - **Database users created by the deploy workflow** (`azure/sql-action`, idempotent T-SQL), after Bicep and before the migrator.
-- **MongoDB password** in a GitHub secret; Bicep builds the connection string and writes it into one Key Vault per environment, read by both identities.
+- **MongoDB password** in a GitHub secret; Bicep builds the connection string and writes it into one Key Vault per environment, read only by the API identity: the migrator gets a placeholder, because it never uses MongoDB.
 
 ## Consequences
 - The only secret is the MongoDB password.

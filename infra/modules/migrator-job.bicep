@@ -8,7 +8,6 @@ param identityId string
 param image string
 @description('Azure SQL connection string, without secret: the identity signs in (ADR-0012).')
 param sqlConnectionString string
-param mongoSecretUri string
 
 resource job 'Microsoft.App/jobs@2026-07-01' = {
   name: name
@@ -31,13 +30,6 @@ resource job 'Microsoft.App/jobs@2026-07-01' = {
         parallelism: 1
         replicaCompletionCount: 1
       }
-      secrets: [
-        {
-          name: 'mongo-connection-string'
-          keyVaultUrl: mongoSecretUri
-          identity: identityId
-        }
-      ]
     }
     template: {
       containers: [
@@ -48,10 +40,11 @@ resource job 'Microsoft.App/jobs@2026-07-01' = {
             cpu: json('0.25')
             memory: '0.5Gi'
           }
-          // The bundle builds the app host, which needs both connection strings (only the SQL one is used)
+          // The bundle builds the app host, which needs both connection strings. Only the SQL one is used: MongoDB gets
+          // a placeholder (as in the Dockerfile), so the migrator identity needs no Key Vault access (ADR-0012)
           env: [
             { name: 'ConnectionStrings__DbConnection', value: sqlConnectionString }
-            { name: 'ConnectionStrings__MongoDb', secretRef: 'mongo-connection-string' }
+            { name: 'ConnectionStrings__MongoDb', value: 'mongodb://unused/productapi' }
           ]
         }
       ]
