@@ -105,7 +105,7 @@ See [TestingStrategy](TestingStrategy.md).
 ## Runtime and delivery
 
 - Local: `docker compose up -d` for the infrastructure, `--profile app` to also run the containerized API.
-- CI/CD is designed but not implemented ([CICD](CICD.md)). Azure infrastructure is Bicep in `infra/` (Container App and migrator job still to come), deployed as deployment stacks ([ADR-0015](adr/0015-azure-infrastructure.md)).
+- CI/CD with GitHub Actions: pull request checks in `ci.yml`, deployment to Azure Container Apps in `cd.yml` and `deploy.yml` ([CICD](CICD.md)). Azure infrastructure is Bicep in `infra/`, deployed as deployment stacks ([ADR-0015](adr/0015-azure-infrastructure.md)). Staging has been deployed and verified end to end; production has never been deployed (see [CICD](CICD.md#3-deployment-pipeline-cd)).
 
 ## Known limits
 
