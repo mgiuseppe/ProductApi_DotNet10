@@ -1,41 +1,75 @@
 # Contributing
 
-## GitHub Flow
+## Tools
 
-`main` is protected by two rulesets versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh` ([CI setup and maintenance](docs/administrators/CISetupAndMaintenance.md)): `main-require-pr.json` (the points below) and `main-quality-gates.json` (required status checks and CodeQL results, [CICD](docs/CICD.md#2-pull-request-pipeline-ci)):
+- [.NET 10 SDK](https://dotnet.microsoft.com/download) and Docker Desktop
+- `dotnet-ef` for migrations: `dotnet tool install --global dotnet-ef`
+- [GitHub CLI](https://cli.github.com/) for pull requests
+- [Claude Code](https://claude.com/claude-code): commits go through its `/verify-and-commit` skill
+- VS Code with C# Dev Kit and REST Client (for the `.http` files in `src/Api/TestsHttp`)
 
-- Every change starts from `main` on a short-lived branch (`feature/`, `fix/`, `docs/`, `chore/`) or a worktree, and reaches `main` only through a pull request.
-- No direct pushes, no force pushes and no deletion of `main`, with no bypass, administrators included.
-- **0 required approvals**: GitHub does not let authors approve their own pull requests, so with one maintainer a required review would block every merge. The review is reading the diff, with the `architecture-reviewer` and `code-reviewer` subagents.
-- The CI jobs are required status checks (`main-quality-gates`): a pull request is merged only when they are green.
+## Build and test
 
-Why: the project has one maintainer and direct pushes would be enough, but it is meant to work like a real application, where changes reach `main` only through pull requests. Git Flow (`develop`, release branches) was not chosen: it is built for versioned releases, not for an app deployed from `main`.
+```bash
+dotnet build ProductApi.slnx
+dotnet format ProductApi.slnx --verify-no-changes
+dotnet test tests/Domain.Tests
+dotnet test tests/Application.Tests
+dotnet test tests/Infrastructure.Tests      # needs Docker: SQL Server in Testcontainers
+```
 
-A migration becomes shared when it is merged into `main` ([ADR-0009](docs/adr/0009-migrations-forward-only-after-merge.md)).
+Where tests go:
+- domain rules: `Domain.Tests`;
+- command handlers, with mocked repositories: `Application.Tests`;
+- repositories and query handlers, on a real SQL Server: `Infrastructure.Tests`.
 
-## Squash merge only
+One test class per tested class, names `Method_Condition_Result`, `// Arrange`, `// Act`, `// Assert`. Never call the real LLM: mock `IChatClient`. More in [Testing strategy](docs/TestingStrategy.md).
 
-Pull requests are merged with **squash merge only** (the other methods are disabled), and branches are deleted after the merge:
+## Run
 
-- `main` reads as one commit per pull request, whose message is the pull request title; undoing a change is one `git revert`.
-- The branch's intermediate commits (often the agent's small steps) are lost from `git log`; they stay visible in the closed pull request.
-- **Pull requests stay small**: a change that deserves its own commits deserves its own pull request.
-- **A branch is not reused after its merge**: further commits would bring back the squashed ones. Start a new branch from `main`.
-- **Formatting-only changes go in their own pull request**, so the squash commit can be added to `.git-blame-ignore-revs`.
+- **API with F5**, infrastructure in Docker: see the [README](README.md#run-it-locally).
+- **Everything in Docker**, to check the container before a push: `docker compose --profile app up --build -d` (API on http://localhost:8080).
+- **Ports**: copy `.env.example` to `.env`. If you change the SQL Server, MongoDB or OTLP port, update `src/Api/appsettings.Development.json` too.
+- **OpenAI key**: user-secrets with F5, `OPENAI_API_KEY` in `.env` for the container.
+- **Stop**: `docker compose --profile app down` (add `-v` to delete the data).
 
-Merge commits would keep meaningful intermediate commits (useful for long-lived branches); rebase merges would put every intermediate commit on the main line, so they would need cleaning up before each merge.
+## Migrations
+
+```bash
+dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Api
+dotnet ef database update --project src/Infrastructure --startup-project src/Api
+```
+
+A migration can be changed until it is merged into `main`; after that, a mistake is fixed with a new migration ([ADR-0009](docs/adr/0009-migrations-forward-only-after-merge.md)). Risky operations are listed in [EF Core](docs/EFCore.md#changes-that-need-attention).
+
+## API documentation
+
+The OpenAPI document is generated from the XML comments of the endpoint methods.
+
+- Every endpoint is documented: `<summary>`, `<param>` for its parameters, `<response>` for each status code.
+- Document the contract (what the caller sends and gets back), not the implementation.
+- `<remarks>` only for what the caller must know and does not fit in the summary.
+- Endpoints are named `internal static` methods: the XML comments of lambdas and private methods do not reach the OpenAPI document.
+- Domain and Application know nothing about HTTP.
 
 ## Workflow
+
+GitHub Flow: `main` is protected, every change goes through a short-lived branch and a pull request.
 
 ```bash
 git switch main && git pull
 git switch -c feature/<short-name>          # or fix/, docs/, chore/
-# ...work, then in Claude Code: /verify-and-commit (ask it to push and open the PR)...
-gh pr merge --squash --delete-branch        # after reading the diff in the pull request
+# work, then in Claude Code: /verify-and-commit (ask it to push and open the pull request)
+gh pr merge --squash --delete-branch        # after reading the diff
 ```
 
-Commits go through `/verify-and-commit`, so every commit passes the quality gate (format, build, tests, migration checks).
+- When you ask Claude Code to commit, it runs the `/verify-and-commit` skill, which checks quality (format, build, tests and migrations).
+- No pull request approval is required, because this is a solo project and GitHub does not let authors approve their own pull requests. Review means reading the diff and running the `architecture-reviewer` and `code-reviewer` agents.
+- The CI jobs are required checks: a pull request cannot be merged until they pass.
+- **Squash merge only**: one commit per pull request on `main`, titled as the pull request. So keep pull requests small, never reuse a merged branch, and put formatting-only changes in their own pull request.
+
+Repository settings and rulesets: [MAINTAINING](MAINTAINING.md).
 
 ## Architecture decisions
 
-Write an ADR in `docs/adr/` only for decisions that change the structure of the system or are expensive to reverse (layers, persistence, messaging, transaction boundaries, external integrations, infrastructure). Workflow rules and implementation details go in the topic documents (`CONTRIBUTING.md`, `docs/CICD.md`, `docs/TestingStrategy.md`).
+Write an ADR in `docs/adr/` only for decisions that change the structure or are expensive to reverse: layers, persistence, messaging, transaction boundaries, external integrations, infrastructure. Workflow rules and details go in the topic documents.
