@@ -1,3 +1,7 @@
+# Jason Taylor's Clean Architecture template
+
+Study notes on [Jason Taylor's template](https://cleanarchitecture.jasontaylor.dev/docs/getting-started/first-project/), used as a reference for this project, and how this project differs from it.
+
 ```mermaid
 flowchart LR
   Web --> |forwards requests| Application
@@ -5,10 +9,6 @@ flowchart LR
   Infrastructure --> |implements services| Application
   Application --> |uses| Domain
 ```
-
-This doc is for the Jason Taylor's Template on Clean Architecture. 
-
-See: [link](https://cleanarchitecture.jasontaylor.dev/docs/getting-started/first-project/)
 
 - ___Web___:
     - Assembles the application with the web application builder (wiring and DI; reference to Infrastructure for DI)

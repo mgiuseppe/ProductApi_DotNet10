@@ -4,7 +4,7 @@ The map of the solution: what the parts are, how a request flows through them an
 
 ## Context
 
-A single API that manages **products**, **orders** (draft, confirmed, shipped, canceled) and single-use **vouchers** applied at confirmation, and produces an LLM summary of an order for support operators. One consumer, no authentication, learning scope: several domain areas are deliberately simplified ([DomainSimplifications](DomainSimplifications.md)).
+A single API that manages **products**, **orders** (draft, confirmed, shipped, canceled) and single-use **vouchers** applied at confirmation, and produces an LLM summary of an order for support operators. One consumer, no authentication. The domain is a pretext for the technical topics, so several areas are deliberately simplified ([DomainSimplifications](DomainSimplifications.md)).
 
 ```mermaid
 flowchart LR
@@ -17,14 +17,14 @@ flowchart LR
 
 ## Layers
 
-Clean Architecture with four projects ([ADR-0001](adr/0001-clean-architecture.md), [CleanArchitecture](CleanArchitecture.md)).
+Clean Architecture with four projects ([ADR-0001](adr/0001-clean-architecture.md)).
 
 ```mermaid
-flowchart TD
-  Api --> Application
-  Api --> Infrastructure
-  Infrastructure --> Application
-  Application --> Domain
+flowchart LR
+  Api --> |sends commands and queries| Application
+  Api --> |registers in DI| Infrastructure
+  Infrastructure --> |implements ports| Application
+  Application --> |uses| Domain
 ```
 
 | Project | Contains | Must not contain |
@@ -34,7 +34,7 @@ flowchart TD
 | `Infrastructure` | `AppDbContext`, Fluent API configurations, migrations, repositories, `DispatchDomainEventsInterceptor`, Mongo history log, OpenAI registration | Business rules |
 | `Api` | Minimal API endpoints, `ProblemDetailsExceptionHandler`, OpenTelemetry and health checks setup, `.http` files | Use case logic |
 
-Aggregates are rich: invariants are enforced inside their methods ([ADR-0002](adr/0002-rich-domain-model.md)).
+Aggregates are rich: invariants are enforced inside their methods ([ADR-0002](adr/0002-rich-domain-model.md)). Child entities change only through their aggregate root (`OrderLine` through `Order`), so the root can enforce its own rules, such as no line changes after confirmation.
 
 ## Request flow
 
@@ -78,10 +78,29 @@ Endpoints contain no try/catch. Exceptions bubble up to `ProblemDetailsException
 | `BadHttpRequestException` | Minimal API binding (missing required parameter, malformed JSON body) | its own status, usually 400 |
 | anything else | | 500 with `traceId` |
 
+### Where to validate
+
+Each check lives in the layer that has the information to make it:
+
+| Check | Where | Example | HTTP |
+|---|---|---|---|
+| Request shape | Api, minimal API binding | Missing required parameter, malformed JSON | 400 (`BadHttpRequestException`) |
+| Input that is not a domain rule | Application | `Paging.Validate`: page size between 1 and 100 | 400 (`ValidationException`, with every invalid field) |
+| Invariants | Domain, inside the aggregate methods | A confirmed order cannot change its lines; an expired voucher cannot be redeemed | 400 (`DomainException`, first violated rule) |
+| Rules that need other rows or concurrency | Database constraints | The same voucher redeemed by two orders at the same time (unique index) | 409 (`ConflictException`) |
+
+Input checks and domain guards fail differently:
+- **Input checks** look only at the request, so they collect every error and the caller fixes them in one go (`ValidationException` with a dictionary of errors).
+- **Domain guards** protect the state: they throw on the first violated rule, because one broken rule already makes the whole operation invalid: there is nothing to collect. They are the last line of defense for input rules, and the only one for rules that depend on the current state (order status, voucher validity), which no input check can see.
+
+To tell an input check from an invariant: if a second entry point (a batch, a test) skipped the check, would the rule still have to hold? If yes, it is an invariant and belongs in the Domain. A rule that appears in both, such as a maximum length, keeps its constant in the Domain.
+
+Commands have no separate input validation yet (for example FluentValidation in a MediatR behavior): today their checks are domain invariants.
+
 ## Persistence
 
 - **SQL Server** (EF Core, Azure SQL in the cloud, snake_case names) is the source of truth for the three aggregates ([ADR-0006](adr/0006-sql-server-and-mongodb.md), [EFCore](EFCore.md)).
-- **MongoDB** stores the order history entries (polymorphic documents), written by domain event handlers. It is not in the EF transaction: a rolled-back save can leave orphan history entries, accepted for a learning scope.
+- **MongoDB** stores the order history entries (polymorphic documents), written by domain event handlers. It is not in the EF transaction: a rolled-back save can leave orphan history entries, accepted because the history is not critical.
 - **Migrations** are applied by a separate `migrator` container (EF migrations bundle) before the API starts, never at API startup ([ADR-0008](adr/0008-migrations-with-migrator.md)). Mongo indexes are created idempotently at startup.
 
 ## AI

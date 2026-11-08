@@ -1,6 +1,6 @@
 # Domain Events
 
-> **This is a Learning example, not a complete production recipe.** Domain events are published and handled before the commit. If a handler throws, changes are not committed and you should add trycatch if it's not intended to work in this way. If the transaction is rolled back, records on mongodb are still persisted and become orphans because they're not under the same transaction. See [Criticality](#criticality-four-levels) for more info on edge cases.
+> **Not a complete production recipe.** Domain events are published and handled before the commit. If a handler throws, nothing is committed: add a `try/catch` in the handler if that is not the intended behavior. If the transaction is rolled back, the records already written to MongoDB stay and become orphans, because MongoDB is not in the same transaction. See [Criticality](#criticality-four-levels) for more info on edge cases.
 
 ## Classes
 ```mermaid
@@ -72,7 +72,7 @@ Two independent questions about each domain event:
 
 ### Outbox
 
-If you need to add critical data, that must not be lost and must not be orphans, into a system that doesn't share the transation with EF (such as MongoDb), a reliable way to handle is an **outbox**:
+If you need to add critical data, that must not be lost and must not be orphans, into a system that doesn't share the transaction with EF (such as MongoDb), a reliable way to handle is an **outbox**:
 - the handler writes the events to an outbox table **inside the same transaction** as the order;
 - a background service (or a separate process) reads the pending rows, runs the handlers and marks each row as processed;
 - delivery is **at least once**, so handlers must be idempotent: the history log uses the event id as the document id, so a second insert of the same event is rejected instead of duplicated.
@@ -84,9 +84,9 @@ Another way would be to implement a **two-phase commit**. Both are complex solut
 ### Known limits of the current design
 
 - Handlers run **inside the request**, so they add to its latency.
-- With a single sequential publisher, a failing handler prevents the following handlers of the same event from running (if not try catched).
+- With a single sequential publisher, a failing handler prevents the following handlers of the same event from running (unless it catches its own exceptions).
 - The Domain references the MediatR contracts package (`INotification`), a deliberate and small exception to a dependency-free Domain that avoids a wrapper and reflection in the dispatcher.
 
 Compared with the reference template: it publishes events carrying the entity. Here the events carry a snapshot.
 
-The history log on MongoDB is a learning exercise; in production I would store it in the relational database, in the same transaction, or use an outbox.
+The history log is on MongoDB to practice a second store; in production I would store it in the relational database, in the same transaction, or use an outbox.

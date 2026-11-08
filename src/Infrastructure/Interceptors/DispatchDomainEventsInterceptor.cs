@@ -5,10 +5,10 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Infrastructure.Interceptors;
 
 /// <summary>
-/// This is a Learning example, not a complete production recipe.
-/// Domain events are published and handled before the commit. 
-/// If a handler throws, changes are not committed and you should add trycatch if it's not intended to work in this way. 
-/// If the transaction is rolled back, records on mongodb are still persisted and become orphans because they're not under the same transaction as EF.
+/// Not a complete production recipe.
+/// Domain events are published and handled before the commit.
+/// If a handler throws, nothing is committed: add a try/catch in the handler if that is not the intended behavior.
+/// If the transaction is rolled back, the records already written to MongoDB stay and become orphans, because MongoDB is not in the EF transaction.
 /// See DomainEventsHandling.md for further info.
 /// </summary>
 public class DispatchDomainEventsInterceptor(IMediator mediator) : SaveChangesInterceptor

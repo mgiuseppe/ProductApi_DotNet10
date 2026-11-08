@@ -92,4 +92,4 @@ From Scalar, or with [ApiOrders.http](src/Api/TestsHttp/ApiOrders.http):
 
 ## Documentation
 
-Topic documents (EF Core, observability, CI/CD, testing, AI...) are in [docs/](docs/).
+Topic documents (EF Core, observability, CI/CD, testing, AI...): see the [index](docs/README.md).

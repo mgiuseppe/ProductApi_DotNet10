@@ -91,7 +91,7 @@ Prompts stored outside the code (configuration or a prompt store) and loaded by 
 - Costs: the template is split from the code that fills it (like SQL in a table, they can drift with nothing failing at compile time or in tests), and a prompt change skips review and tests. Prompts would need versioning and an eval suite.
 
 ### Streaming the answer
-The endpoint waits for the whole answer and returns it in one response. We don't stream it because this is a basic learning project, and the summary is short (at most ~5 sentences, `MaxOutputTokens = 500`).
+The endpoint waits for the whole answer and returns it in one response. We don't stream it because the summary is short (at most ~5 sentences, `MaxOutputTokens = 500`).
 - Streaming means `GetStreamingResponseAsync` in the handler (a MediatR `IStreamRequest` returning `IAsyncEnumerable<string>`) and an endpoint that writes chunks as they arrive (e.g. Server-Sent Events): the operator sees the text being written instead of waiting for the whole answer.
 - The SDK retries a failed request, but not a stream that breaks halfway. If the LLM call fails mid-stream, the client still learns that something went wrong, but not why:
   - the status line and the headers (`200 OK`, `text/event-stream`) are sent with the first chunk, so the status can no longer change and `ProblemDetailsExceptionHandler` can't turn the exception into a 500/503 with ProblemDetails;
