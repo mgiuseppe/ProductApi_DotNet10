@@ -63,6 +63,8 @@ git switch -c feature/<short-name>          # or fix/, docs/, chore/
 gh pr merge --squash --delete-branch        # after reading the diff
 ```
 
+In practice you ask Claude Code to start a task: it proposes branch names, creates the one you choose from an up-to-date `main`, and later commits, pushes and opens the pull request when you ask.
+
 - When you ask Claude Code to commit, it runs the `/verify-and-commit` skill, which checks quality (format, build, tests and migrations).
 - No pull request approval is required, because this is a solo project and GitHub does not let authors approve their own pull requests. Review means reading the diff and running the `architecture-reviewer` and `code-reviewer` agents.
 - The CI jobs are required checks: a pull request cannot be merged until they pass.
