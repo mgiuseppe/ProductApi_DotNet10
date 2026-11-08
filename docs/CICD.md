@@ -1,7 +1,7 @@
 # CI/CD
  
-> **Status: CI running on every pull request; CD written, not yet run** (off until the repository variable `CD_ENABLED` is `true`). Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. Setup and maintenance of CI and CD: [MAINTAINING](../MAINTAINING.md).
-> This document records how I would build, test and deploy the project, and why.
+> **Status: CI runs on every pull request; CD has run end to end on staging** and is off between verifications (repository variable `CD_ENABLED`). Workflows in `.github/workflows/` (`ci.yml`, `cd.yml` with `deploy.yml`, `teardown.yml`), Bicep in `infra/`. Setup and maintenance of CI and CD: [MAINTAINING](../MAINTAINING.md).
+> This document describes how the project is built, tested and deployed, and why.
  
 ## Principles
  
@@ -21,13 +21,13 @@ A push to a feature branch is never rejected: the checks run afterwards and bloc
   - `pre-push`: unit tests, if they stay fast.
   - Integration tests (they need Docker) run only in CI: a slow hook ends up being skipped.
 - **Hooks are a convenience, not a barrier:** they can be skipped with `--no-verify` and every clone has to install them. The real gate is the CI with required checks.
-- **One-time cleanup:** `dotnet format` on the whole solution in a **separate commit**, whose hash goes into `.git-blame-ignore-revs`. Check line endings (`.editorconfig`, `.gitattributes`) before running it, or every file will be rewritten.
+- **Formatting-only commits** (such as the first `dotnet format` on the whole solution) are listed in `.git-blame-ignore-revs`, so `git blame` skips them.
 
 ## 2. Pull request pipeline (CI)
  
-Two rulesets on `main` ([CONTRIBUTING](../CONTRIBUTING.md)), whose rules add up:
+Two rulesets on `main`, whose rules add up:
 
-- `main-require-pr`: no direct pushes, no force pushes, no deletion, no bypass, squash merge only ([CONTRIBUTING](../CONTRIBUTING.md#squash-merge-only)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
+- `main-require-pr`: no direct pushes, no force pushes, no deletion, no bypass, squash merge only ([why](../MAINTAINING.md#why-squash-merge-only)). Required approvals: 0, because GitHub does not let authors approve their own pull requests and the project has a single maintainer.
 - `main-quality-gates`: required status checks green, CodeQL results without high or critical alerts.
 
 They are versioned in `.github/rulesets/` and applied with `.github/rulesets/sync.sh`; the repository settings a ruleset cannot express (merge buttons, Dependabot alerts, secret scanning, CodeQL) are set by hand in the UI. Both, and in which order: [CI setup and maintenance](administrators/CISetupAndMaintenance.md).

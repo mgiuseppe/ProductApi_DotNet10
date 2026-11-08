@@ -1,5 +1,5 @@
 # Domain Simplifications
-This project is a learning exercise, so several areas are deliberately simplified.
+The project exists to practice the technical side (architecture, persistence, observability, CI/CD, cloud): the domain is a pretext, so several areas are deliberately simplified.
 
 ## Order and cart
 - `Order.Draft` acts as an implicit cart: lines can be edited freely and their prices follow the current product price. `ConfirmOrderCommandHandler` silently re-syncs stale prices before confirming, rather than rejecting the confirmation. A real e-commerce would model `Cart` as a separate aggregate, create an immutable `Order` at checkout, and show a "price has changed" step to the user before charging.
