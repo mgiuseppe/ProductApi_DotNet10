@@ -45,7 +45,7 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 
 ## Workflow rules
 
-- GitHub Flow ([CONTRIBUTING](CONTRIBUTING.md)): never commit or push on `main`. Work on a short-lived branch or worktree, open a pull request, merge with squash. Keep pull requests small; formatting-only changes get their own pull request.
+- GitHub Flow ([CONTRIBUTING](CONTRIBUTING.md)): never commit or push on `main`. Work on a short-lived branch or worktree, open a pull request, merge with squash. When you have to create a branch, propose two or three branch names and create the one the user chooses from an up-to-date `main`; never pick the name yourself. Keep pull requests small; formatting-only changes get their own pull request.
 - Before every commit run the format gate and the unit tests; before every push also `Infrastructure.Tests`. Use the `/verify-and-commit` skill. Do not commit if anything fails, and do not skip checks with `--no-verify`.
 - A change to layers, persistence, messaging, transaction boundaries or external integrations is an architectural decision: write a new ADR in `docs/adr/` (template in its README) before or with the code, and update `docs/ARCHITECTURE.md`. Workflow rules and implementation details are not ADRs: they go in the topic documents. Never rewrite an accepted ADR: supersede it with a new one.
 - After a non-trivial change, run the `architecture-reviewer` (layers, ADRs) and `code-reviewer` (clean code, race conditions, transactions) subagents on the diff.
