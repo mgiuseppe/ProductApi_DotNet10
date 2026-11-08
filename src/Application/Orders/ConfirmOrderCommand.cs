@@ -10,8 +10,8 @@ public record ConfirmOrderCommand(Guid Id, Guid? VoucherId) : IRequest<OrderWith
 
 /// <summary>
 /// Silently re-syncs stale line prices before confirming (Order.Draft acts as a live-priced cart).
-/// See README § Order/Cart boundary for the reasoning — this is a deliberate simplification: 
-/// A real e-commerce would surface price changes to the user before checkout.
+/// A deliberate simplification (see docs/DomainSimplifications.md): a real e-commerce would surface
+/// price changes to the user before checkout.
 /// </summary>
 internal class ConfirmOrderCommandHandler(IOrderRepository ordersRepository,
                                           IVoucherRepository vouchers,

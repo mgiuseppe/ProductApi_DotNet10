@@ -5,7 +5,7 @@ using Domain.Vouchers;
 namespace Domain.Orders;
 
 /// <summary>
-/// Order in status Draft acts as an implicit cart, see README § Order/Cart boundary for the reasoning, 
+/// Order in status Draft acts as an implicit cart (see docs/DomainSimplifications.md).
 /// This is a deliberate simplification, a real e-commerce would use a separate cart aggregate.
 /// 
 /// Invariants:

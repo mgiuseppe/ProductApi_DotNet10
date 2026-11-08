@@ -2,6 +2,8 @@
 
 Study notes on [Jason Taylor's template](https://cleanarchitecture.jasontaylor.dev/docs/getting-started/first-project/), used as a reference for this project, and how this project differs from it.
 
+## Taylor's template analysis
+
 ```mermaid
 flowchart LR
   Web --> |forwards requests| Application
@@ -54,13 +56,14 @@ flowchart LR
         - The idea is that if there are several independent API projects under the solution, they don't have to rewrite all of Aspire's base Add calls every time.
     - ___Tests___: contains the tests (unit, integration, functional, ...)
 
-----
 ___Peripheral stuff___:
 - AddOpenAPI instead of Swashbuckle
 - Scalar instead of SwaggerUI
 - Global exception handler that sets the status code according to the exception and puts the details in the body, which differ depending on the exception
 - An IEndpointGroup, a MapEndpoints extension method and MapGet/MapPut extension methods to handle routing...
     - MapEndpoints scans all the classes that implement IEndpointGroup, sets the group and the route prefix and then invokes the class's Map method so that they get mapped (basically it does in minimal API what controllers used to do for free).
+
+## Comparison
 
 ___What I don't like___:
 - Web/Infrastructure mixes things used for the OpenAPI documentation (transformers), things the API needs at runtime (exception handler), and things used to build the app (MapEndpoints and interfaces)
@@ -88,7 +91,7 @@ ___Other points___:
 - Validation (two different things, not to be mixed):
     - Command validation: checks that the request is well-formed (empty fields, lengths, formats). It looks only at the command, so it can run before the handler and report all errors at once.
         - Template: `FluentValidation` validators (e.g. `CreateTodoItemCommandValidator`), run by a behavior that throws a `ValidationException` with a dictionary of errors.
-        - Mine: none yet.
+        - Mine: none for commands yet; the list queries check their paging parameters the same way (`Paging.Validate`).
     - Domain invariants: rules that must always hold for the entity, whichever code path changes it (a command, a batch, a test).
         - Template: almost none, since the entities expose their state. It is not clear from the template whether the validators are also meant to cover invariants; I assume not.
         - Mine: they live in the entities (factory methods and behavior methods) and throw a `DomainException` on the first violated rule.
