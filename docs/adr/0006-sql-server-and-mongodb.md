@@ -17,7 +17,7 @@ Aggregates need transactions and constraints (two orders must not redeem the sam
 - Transactions and constraints where the rules live; a schema-free store for the log.
 - No shared transaction between the two stores ([0005](0005-domain-events-before-commit.md)).
 - Raw SQL must use snake_case names.
-- No schema versioning of the history documents: out of scope.
+- History documents carry a `SchemaVersion`, but reading older versions is not handled: out of scope.
 - The first request after a pause of the serverless database can take up to a minute.
 
 ## Alternatives considered
