@@ -6,6 +6,7 @@ using MediatR;
 namespace Application.Orders;
 
 public record CreateOrderCommand(IReadOnlyList<CreateOrderLine> Lines) : IRequest<OrderWithLinesResponse>;
+/// <param name="Quantity">At least 1.</param>
 public record CreateOrderLine(Guid ProductId, int Quantity);
 
 internal class CreateOrderCommandHandler(IOrderRepository ordersRepository,
