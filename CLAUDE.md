@@ -4,17 +4,15 @@ Product / order / voucher API built to refresh .NET skills: .NET 10, Clean Archi
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) before changing structure, and the ADRs in [docs/adr/](docs/adr/README.md) before revisiting a decision.
 
-## Commands
+Commands, tests, migrations, API documentation and the rules on branches and pull requests are in CONTRIBUTING, imported below: this file adds only what the agent needs on top.
+
+@CONTRIBUTING.md
+
+## Run locally
 
 ```bash
 docker compose up -d                                   # SQL Server, MongoDB, Aspire dashboard, migrator
 dotnet run --project src/Api                           # API on http://localhost:5224
-dotnet build ProductApi.slnx
-dotnet format ProductApi.slnx --verify-no-changes      # format gate
-dotnet test tests/Domain.Tests                         # fast, no dependencies
-dotnet test tests/Application.Tests                    # fast, mocks
-dotnet test tests/Infrastructure.Tests                 # needs Docker running (Testcontainers)
-dotnet ef migrations add <Name> --project src/Infrastructure --startup-project src/Api
 ```
 
 ## Layer rules
@@ -24,7 +22,7 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 - **Domain**: aggregates with private setters, private parameterless constructor for EF, static `Create` factories, state changes only through methods that enforce invariants and throw `DomainException`. No EF, no infrastructure. The only allowed external reference is `MediatR.Contracts` (`INotification` for domain events, [ADR-0005](docs/adr/0005-domain-events-before-commit.md)).
 - **Application**: one file per use case (`XxxCommand`/`XxxQuery` record + its handler, `internal`). Command handlers load via repositories, call domain methods, then `IUnitOfWork.SaveChangesAsync` explicitly. Query handlers read through `IQueryContext` and never through repositories. Responses map with `FromDomain`. References EF Core and `Microsoft.Extensions.AI.Abstractions` packages, never the Infrastructure project.
 - **Infrastructure**: `AppDbContext` (internal, is also `IUnitOfWork` and `IQueryContext`), Fluent API configurations, repositories, Mongo, AI client registration. No business rules.
-- **Api**: minimal API endpoints that send a MediatR request and map the result to an HTTP status. No try/catch: `ProblemDetailsExceptionHandler` maps `NotFoundException` (404), `DomainException` (400), `ValidationException` (400), `ConflictException` (409), `BadHttpRequestException` (its status, usually 400), anything else (500).
+- **Api**: minimal API endpoints that send a MediatR request and map the result to an HTTP status. No try/catch: `ProblemDetailsExceptionHandler` maps the exceptions to HTTP statuses ([table](docs/ARCHITECTURE.md#errors)).
 
 ## Conventions
 
@@ -37,17 +35,10 @@ Dependency direction: `Api -> Application -> Domain`, `Infrastructure -> Applica
 - Prompts and `ChatOptions` stay in the use case handler; never log prompt contents.
 - Secrets never go in `appsettings.json`: user-secrets for F5, `.env` for Docker.
 
-## Tests
+## Agent rules
 
-- One test class per tested class, names `Method_Condition_Result`, AAA comments (`// Arrange`, `// Act`, `// Assert`), xUnit + Moq.
-- Domain logic -> `Domain.Tests`. Command handlers -> `Application.Tests` with mocked repositories. Repositories and **query handlers** -> `Infrastructure.Tests` against real SQL Server.
-- Never call the real LLM in tests: mock `IChatClient`.
-
-## Workflow rules
-
-- GitHub Flow ([CONTRIBUTING](CONTRIBUTING.md)): never commit or push on `main`. Work on a short-lived branch or worktree, open a pull request, merge with squash. When you have to create a branch, propose two or three branch names and create the one the user chooses from an up-to-date `main`; never pick the name yourself. Keep pull requests small; formatting-only changes get their own pull request.
-- Before every commit run the format gate and the unit tests; before every push also `Infrastructure.Tests`. Use the `/verify-and-commit` skill. Do not commit if anything fails, and do not skip checks with `--no-verify`.
-- A change to layers, persistence, messaging, transaction boundaries or external integrations is an architectural decision: write a new ADR in `docs/adr/` (template in its README) before or with the code, and update `docs/ARCHITECTURE.md`. Workflow rules and implementation details are not ADRs: they go in the topic documents. Never rewrite an accepted ADR: supersede it with a new one.
-- After a non-trivial change, run the `architecture-reviewer` (layers, ADRs) and `code-reviewer` (clean code, race conditions, transactions) subagents on the diff. Fix the bugs and clear problems they find; ask the user about judgment calls.
-- Migrations: edit freely until pushed; once on `origin/main` they are forward-only (never edited, `Down` never run on a shared database). No expand/contract: breaking changes go out in one release; the risky operations are listed in `docs/EFCore.md` as a reference ([ADR-0009](docs/adr/0009-migrations-forward-only-after-merge.md)).
+- Never commit or push on `main`. When you have to create a branch, propose two or three branch names and create the one the user chooses from an up-to-date `main`; never pick the name yourself.
+- Do not commit if a check of `/verify-and-commit` fails, and never skip checks with `--no-verify`.
+- Write the ADR before or with the code (template in `docs/adr/README.md`) and update `docs/ARCHITECTURE.md`. Never rewrite an accepted ADR: supersede it.
+- After a non-trivial change, run the `architecture-reviewer` and `code-reviewer` subagents on the diff. Fix the bugs and clear problems they find; ask the user about judgment calls.
 - Keep docs in English; commit messages short and imperative.

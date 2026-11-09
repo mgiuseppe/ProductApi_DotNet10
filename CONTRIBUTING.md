@@ -18,12 +18,16 @@ dotnet test tests/Application.Tests
 dotnet test tests/Infrastructure.Tests      # needs Docker: SQL Server in Testcontainers
 ```
 
+One test class per tested class, names `Method_Condition_Result`, `// Arrange`, `// Act`, `// Assert`.
+
 Where tests go:
 - domain rules: `Domain.Tests`;
 - command handlers, with mocked repositories: `Application.Tests`;
 - repositories and query handlers, on a real SQL Server: `Infrastructure.Tests`.
 
-One test class per tested class, names `Method_Condition_Result`, `// Arrange`, `// Act`, `// Assert`. Never call the real LLM: mock `IChatClient`. More in [Testing strategy](docs/TestingStrategy.md).
+Never call the real LLM: mock `IChatClient`.
+
+More in [Testing strategy](docs/TestingStrategy.md).
 
 ## Run
 
@@ -57,19 +61,15 @@ The OpenAPI document is generated from the XML comments of the endpoint methods.
 
 GitHub Flow: `main` is protected, every change goes through a short-lived branch and a pull request.
 
-```bash
-git switch main && git pull
-git switch -c feature/<short-name>          # or fix/, docs/, chore/
-# work, then in Claude Code: /verify-and-commit (ask it to push and open the pull request)
-gh pr merge --squash --delete-branch        # after reading the diff
-```
-
-In practice you ask Claude Code to start a task: it proposes branch names, creates the one you choose from an up-to-date `main`, and later commits, pushes and opens the pull request when you ask.
-
 - When you ask Claude Code to commit, it runs the `/verify-and-commit` skill, which checks quality (format, build, tests and migrations).
 - No pull request approval is required, because this is a solo project and GitHub does not let authors approve their own pull requests. Review means reading the diff and running the `architecture-reviewer` and `code-reviewer` agents.
 - The CI jobs are required checks: a pull request cannot be merged until they pass.
-- **Squash merge only**: one commit per pull request on `main`, titled as the pull request. So keep pull requests small, never reuse a merged branch, and put formatting-only changes in their own pull request.
+- **Squash merge only**: one commit per pull request on `main`, titled as the pull request. So:
+  - keep pull requests small;
+  - never reuse a merged branch;
+  - put formatting-only changes in their own pull request.
+
+The development workflow with Claude Code is described in [Agentic coding](docs/AgenticCoding.md#workflow).
 
 Repository settings and rulesets: [MAINTAINING](MAINTAINING.md).
 
