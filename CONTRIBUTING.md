@@ -5,7 +5,7 @@
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) and Docker Desktop
 - `dotnet-ef` for migrations: `dotnet tool install --global dotnet-ef`
 - [GitHub CLI](https://cli.github.com/) for pull requests
-- [Claude Code](https://claude.com/claude-code): commits go through its `/verify-and-commit` skill
+- [Claude Code](https://claude.com/claude-code): how the project is developed with it is in [Agentic coding](docs/AgenticCoding.md)
 - VS Code with C# Dev Kit and REST Client (for the `.http` files in `src/Api/TestsHttp`)
 
 ## Build and test
@@ -46,6 +46,7 @@ A migration can be changed until it is merged into `main`; after that, a mistake
 
 The OpenAPI document is generated from the XML comments of the endpoint methods.
 
+- Document what the API exposes and is not self-explanatory: no comments that repeat a name.
 - Every endpoint is documented: `<summary>`, `<param>` for its parameters, `<response>` for each status code.
 - Document the contract (what the caller sends and gets back), not the implementation.
 - `<remarks>` only for what the caller must know and does not fit in the summary.

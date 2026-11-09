@@ -12,7 +12,7 @@ A product, order and voucher API, built to refresh .NET skills end to end:
 - **Azure** deployment: Container Apps, Azure SQL, Azure DocumentDB, Key Vault, Application Insights
 - **Infrastructure as code** with Bicep deployment stacks
 - **CI/CD** with GitHub Actions
-- **Claude Code** for development: project rules in [CLAUDE.md](CLAUDE.md), review agents and a commit skill in [.claude/](.claude/)
+- **Claude Code** for development: project rules, review agents and a commit skill ([Agentic coding](docs/AgenticCoding.md))
 
 ```mermaid
 flowchart LR

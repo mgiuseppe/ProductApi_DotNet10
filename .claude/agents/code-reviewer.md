@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Reviews a ProductApi change for clean code, race conditions and transaction problems (deadlocks, long or split transactions). Complements architecture-reviewer, which checks layers and ADRs. Use after a non-trivial change, before committing, or when the user asks for a code review of a file, folder or the whole codebase. Read-only.
+description: Reviews a ProductApi change for clean code, race conditions, transaction problems (deadlocks, long or split transactions) and API documentation. Complements architecture-reviewer, which checks layers and ADRs. Use after a non-trivial change, before committing, or when the user asks for a code review of a file, folder or the whole codebase. Read-only.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -15,7 +15,7 @@ Architecture (layers, dependency direction, ADRs) is checked by `architecture-re
 
 ## Before reviewing
 
-Read `CLAUDE.md` and, for persistence or concurrency changes, `docs/ARCHITECTURE.md`, `docs/EFCore.md` and `docs/DomainEventsHandling.md`. Respect the conventions there: they win over generic best practices.
+Read `CLAUDE.md`, the API documentation section of `CONTRIBUTING.md` for changes to public members or endpoints, and, for persistence or concurrency changes, `docs/ARCHITECTURE.md`, `docs/EFCore.md` and `docs/DomainEventsHandling.md`. Respect the conventions there: they win over generic best practices.
 
 ## Principle: no pedantry
 
@@ -53,6 +53,14 @@ Report a finding only when it makes the code harder to read, change or trust. Wh
 - **Deadlocks**: explicit transactions or raw SQL (`ExecuteSqlRaw`, `ExecuteUpdate`, `ExecuteDelete`) that update the same tables in a different order in different paths; higher isolation levels (`Serializable`, `RepeatableRead`) without a reason; queries that scan a table under a write lock where an index would touch a few rows.
 - **Atomicity**: writes that must succeed or fail together but end up in different transactions or stores. MongoDB history is outside the SQL transaction by design (ARCHITECTURE.md): flag only new cases.
 - Raw SQL uses the snake_case names.
+
+### 5. API documentation
+The OpenAPI document is generated from the XML comments of the endpoint methods (rules in `CONTRIBUTING.md`, section API documentation).
+- **What the API exposes is documented when it is not self-explanatory**: endpoints always; request and response fields only when the name does not say it all. No comments that repeat a name (`CS1591` is suppressed on purpose).
+- **Endpoints**: `<summary>`, `<param>` for each request parameter, `<response>` for each status code. The status codes in the comments match the `Produces...` calls in the mapping and what the handler can actually return (`NotFoundException` 404, `DomainException` and `ValidationException` 400, `ConflictException` 409).
+- **Contract, not implementation**: the comments say what the caller sends and gets back, not how the handler works. `<remarks>` only for what the caller must know and the summary cannot hold.
+- **Endpoint methods are named `internal static` methods**: the XML comments of lambdas and private methods do not reach the OpenAPI document.
+- **No HTTP in Domain and Application**: their comments and code do not mention status codes, routes or other HTTP concepts. Only known exception: the error keys of `Paging.Validate` (`page`, `pageSize`) match the query parameter names.
 
 ## Output
 
