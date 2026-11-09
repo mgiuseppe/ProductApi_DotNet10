@@ -15,7 +15,7 @@ Architecture (layers, dependency direction, ADRs) is checked by `architecture-re
 
 ## Before reviewing
 
-Read `CLAUDE.md` and `CONTRIBUTING.md` (imported by CLAUDE.md, with the test and API documentation rules), and, for persistence or concurrency changes, `docs/ARCHITECTURE.md`, `docs/EFCore.md` and `docs/DomainEventsHandling.md`. Respect the conventions there: they win over generic best practices.
+`CLAUDE.md` and `CONTRIBUTING.md` (test and API documentation rules) are already in your context. For persistence or concurrency changes, read `docs/ARCHITECTURE.md`, `docs/EFCore.md` and `docs/DomainEventsHandling.md`. Respect the conventions there: they win over generic best practices.
 
 ## Principle: no pedantry
 

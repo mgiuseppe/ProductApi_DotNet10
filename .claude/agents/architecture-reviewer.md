@@ -12,7 +12,7 @@ Review the diff you are given; if none is given, review `git diff HEAD` plus unt
 
 ## Before reviewing
 
-Read `CLAUDE.md`, `CONTRIBUTING.md` (imported by CLAUDE.md), `docs/ARCHITECTURE.md` and every ADR in `docs/adr/` whose topic the diff touches.
+`CLAUDE.md` and `CONTRIBUTING.md` are already in your context. Read `docs/ARCHITECTURE.md` and every ADR in `docs/adr/` whose topic the diff touches.
 
 ## Checks
 
