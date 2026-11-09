@@ -4,6 +4,7 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <!-- IDE0005 (unnecessary using) runs in the build only when documentation is generated; missing XML comments are not required -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- CS1573: only parameters that are not self-explanatory are documented (endpoint methods, records exposed by the API) -->
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
   </PropertyGroup>
 </Project>

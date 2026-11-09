@@ -5,8 +5,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>1dc6fe60-de9d-4bae-988d-cfe2e5511280</UserSecretsId>
-    <!-- CS1573: endpoint methods document only the request parameters (they become OpenAPI descriptions), not the injected services -->
-    <NoWarn>$(NoWarn);CS1573</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -9,6 +9,8 @@ public record UpdateOrderCommand(Guid Id,
                                  IReadOnlyList<CreateOrderLine> LinesToAdd,
                                  IReadOnlyList<UpdateOrderLine> LinesToUpdate,
                                  IReadOnlyList<Guid> LineIdsToDelete) : IRequest<OrderWithLinesResponse>;
+/// <param name="Id">Id of the order line, not of the product.</param>
+/// <param name="Quantity">At least 1.</param>
 public record UpdateOrderLine(Guid Id, int Quantity);
 
 internal class UpdateOrderCommandHandler(IOrderRepository ordersRepository,
