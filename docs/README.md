@@ -14,6 +14,7 @@ Start from [ARCHITECTURE](ARCHITECTURE.md): the map of the solution, with links 
 | [Observability](Observability.md) | OpenTelemetry, logs, custom metrics, health checks, alerts |
 | [Testing strategy](TestingStrategy.md) | Test projects and SQL Server in tests |
 | [CI/CD](CICD.md) | Pipelines, gates, deployment to Azure, migrations in CD |
+| [Agentic coding](AgenticCoding.md) | Development with Claude Code: rules, review agents, commit skill, workflow |
 
 ## Administration
 
