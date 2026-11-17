@@ -37,7 +37,7 @@ RUN ConnectionStrings__DbConnection="Server=unused" ConnectionStrings__MongoDb="
     --configuration Release --output /app/efbundle
     
 # ---------- migrations: runtime image ---------- (only the bundle + the .NET runtime, produced with --target migrator)
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS migrator
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS migrator
 WORKDIR /app
 COPY --from=migrations-build /app/efbundle .
 USER $APP_UID
@@ -47,7 +47,7 @@ ENTRYPOINT ["./efbundle"]
 
 # ---------- API image ---------- (last stage: what a plain `docker build .` produces)
 # Start from aspnet image
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 
 # Set as ENV_VAR the port that will be listened by the app inside the container
