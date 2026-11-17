@@ -5,7 +5,7 @@
 
 # ---------- build ----------
 # Start from dotnet sdk image
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 # Set the workdir in the container you're building
 WORKDIR /src
 
